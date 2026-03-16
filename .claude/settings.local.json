@@ -11,7 +11,30 @@
       "mcp__ide__getDiagnostics",
       "Bash(npm install)",
       "Bash(npx prisma:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nFix TypeScript errors and configure Supabase support\n\nChanges:\n- Add ''bio'' field to gestor type in auth store\n- Update Prisma schema with directUrl for Supabase pooler\n- Update all .env.example files with Supabase config\n- Update README with Supabase setup instructions\n- Update docker-compose to remove local PostgreSQL dependency\n- Update Dockerfile to use prisma db push instead of migrate\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(npm run build:*)",
+      "Bash(npm run db:seed:*)",
+      "Bash(timeout:*)",
+      "Bash(ping:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(powershell:*)",
+      "Bash(npm run dev:*)",
+      "Bash(curl:*)",
+      "Bash(cmd /c \"del /f /q nul\")",
+      "Bash(git commit:*)",
+      "Bash(set NODE_ENV=production)",
+      "Bash(node dist/server.js:*)",
+      "Bash(NODE_ENV=production node:*)",
+      "Bash(cat:*)",
+      "Bash(npm install:*)",
+      "Bash(PORT=3002 HOSTNAME=127.0.0.1 node:*)",
+      "Bash(node test-proxy.js:*)",
+      "Bash(cmd /c \"taskkill /F /PID 28088\")",
+      "Bash(dir \"C:\\\\Users\\\\carlo\\\\Documents\\\\FeedBacks\\\\app\\\\frontend\\\\.next\\\\standalone\")",
+      "Bash(dir:*)"
     ]
   }
 }

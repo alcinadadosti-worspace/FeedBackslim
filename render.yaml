@@ -1,12 +1,11 @@
 services:
-  # Backend API
+  # Pulse360 - Unified Backend + Frontend
   - type: web
-    name: pulse360-api
+    name: pulse360
     runtime: node
     region: oregon
-    rootDir: app/backend
-    buildCommand: npm install && npx prisma generate && npm run build
-    startCommand: npx prisma db push && npm start
+    buildCommand: npm install && npm run build
+    startCommand: npm run db:push && npm start
     envVars:
       - key: DATABASE_URL
         sync: false
@@ -14,28 +13,7 @@ services:
         sync: false
       - key: JWT_SECRET
         generateValue: true
-      - key: FRONTEND_URL
-        fromService:
-          name: pulse360-web
-          type: web
-          property: host
       - key: NODE_ENV
         value: production
-
-  # Frontend Web
-  - type: web
-    name: pulse360-web
-    runtime: node
-    region: oregon
-    rootDir: app/frontend
-    buildCommand: npm install && npm run build
-    startCommand: npm start
-    envVars:
-      - key: NEXT_PUBLIC_API_URL
-        fromService:
-          name: pulse360-api
-          type: web
-          property: hostWithScheme
-          transformSuffix: /api
-      - key: NODE_ENV
-        value: production
+      - key: PORT
+        value: 3000
