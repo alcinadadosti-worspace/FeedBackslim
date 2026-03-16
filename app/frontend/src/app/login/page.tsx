@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { Mail, Lock, ArrowRight } from 'lucide-react';
+import { Mail, Lock, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -45,6 +45,15 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
+        {/* Back to Home */}
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-neutral-600 hover:text-neutral-900 mb-6 font-medium"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Voltar para inicio
+        </Link>
+
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-4">

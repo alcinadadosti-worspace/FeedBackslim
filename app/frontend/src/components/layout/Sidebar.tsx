@@ -1,6 +1,6 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import clsx from 'clsx';
 import {
@@ -19,7 +19,13 @@ import { Avatar } from '@/components/ui/Avatar';
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, logout } = useAuthStore();
+
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  };
 
   const isColaborador = user?.role === 'COLABORADOR';
   const isGestor = user?.role === 'GESTOR';
@@ -133,7 +139,7 @@ export function Sidebar() {
           </div>
         </div>
         <button
-          onClick={logout}
+          onClick={handleLogout}
           className="flex items-center gap-2 w-full px-4 py-2 text-neutral-600 hover:text-red-500 hover:bg-red-50 transition-colors font-semibold"
         >
           <LogOut className="w-5 h-5" />
