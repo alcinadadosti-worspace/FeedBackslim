@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "Pulse360 - Employee Feedback Platform",
   "scripts": {
-    "install:all": "cd app/backend && npm install && cd ../frontend && npm install",
+    "install:backend": "cd app/backend && npm install",
+    "install:frontend": "cd app/frontend && npm install",
     "build:backend": "cd app/backend && npx prisma generate && npm run build",
     "build:frontend": "cd app/frontend && npm run build",
     "copy:static": "node scripts/copy-static.js",
@@ -13,7 +14,7 @@
     "dev:frontend": "cd app/frontend && npm run dev",
     "db:push": "cd app/backend && npx prisma db push",
     "db:seed": "cd app/backend && npm run db:seed",
-    "postinstall": "npm run install:all"
+    "postinstall": "npm run install:backend && npm run install:frontend"
   },
   "engines": {
     "node": ">=18.0.0"
