@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Star, ThumbsUp, Lightbulb, AlertCircle, Send } from 'lucide-react';
-import { MainLayout } from '@/components/layout/MainLayout';
+import { ArrowLeft, Star, ThumbsUp, Lightbulb, AlertCircle, Send, Shield } from 'lucide-react';
+import { PublicLayout } from '@/components/layout/PublicLayout';
 import { Card, CardTitle, CardContent } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
@@ -78,8 +78,8 @@ export default function AvaliarPage() {
         critica: critica || undefined,
       });
 
-      toast.success('Avaliação enviada com sucesso!');
-      router.push(`/gestores/${selectedGestorId}`);
+      toast.success('Avaliacao enviada com sucesso! Obrigado pelo seu feedback.');
+      router.push('/');
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Erro ao enviar avaliação');
     } finally {
@@ -96,13 +96,8 @@ export default function AvaliarPage() {
   ];
 
   return (
-    <MainLayout>
+    <PublicLayout>
       <div className="max-w-3xl mx-auto">
-        {/* Back Button */}
-        <Link href="/dashboard" className="inline-flex items-center gap-2 text-neutral-600 hover:text-neutral-900 mb-6">
-          <ArrowLeft className="w-5 h-5" />
-          Voltar ao dashboard
-        </Link>
 
         <Card>
           <CardTitle className="flex items-center gap-2 mb-6">
@@ -194,10 +189,11 @@ export default function AvaliarPage() {
                 </div>
 
                 {/* Info */}
-                <div className="p-4 bg-neutral-100 border-2 border-neutral-300">
-                  <p className="text-sm text-neutral-600">
-                    <strong>Nota:</strong> Sua avaliação será pública e visível para todos os colaboradores.
-                    Seu nome será exibido junto à avaliação.
+                <div className="p-4 bg-green-50 border-2 border-green-200 flex items-start gap-3">
+                  <Shield className="w-5 h-5 text-green-600 mt-0.5" />
+                  <p className="text-sm text-green-700">
+                    <strong>100% Anonimo:</strong> Sua avaliacao e completamente anonima.
+                    Nao rastreamos sua identidade e o gestor nao sabera quem enviou o feedback.
                   </p>
                 </div>
 
@@ -211,6 +207,6 @@ export default function AvaliarPage() {
           )}
         </Card>
       </div>
-    </MainLayout>
+    </PublicLayout>
   );
 }

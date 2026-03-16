@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { ArrowLeft, AlertTriangle, Shield, Eye, EyeOff, Send } from 'lucide-react';
-import { MainLayout } from '@/components/layout/MainLayout';
+import { AlertTriangle, Shield, Eye, EyeOff, Send } from 'lucide-react';
+import { PublicLayout } from '@/components/layout/PublicLayout';
 import { Card, CardTitle, CardContent } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
@@ -85,8 +84,8 @@ export default function OuvidoriaPage() {
         anonima,
       });
 
-      toast.success('Denúncia registrada com sucesso. O RH será notificado.');
-      router.push('/dashboard');
+      toast.success('Denuncia registrada com sucesso. O RH sera notificado.');
+      router.push('/');
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Erro ao registrar denúncia');
     } finally {
@@ -103,14 +102,8 @@ export default function OuvidoriaPage() {
   ];
 
   return (
-    <MainLayout>
+    <PublicLayout>
       <div className="max-w-3xl mx-auto">
-        {/* Back Button */}
-        <Link href="/dashboard" className="inline-flex items-center gap-2 text-neutral-600 hover:text-neutral-900 mb-6">
-          <ArrowLeft className="w-5 h-5" />
-          Voltar ao dashboard
-        </Link>
-
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
@@ -240,6 +233,6 @@ export default function OuvidoriaPage() {
           )}
         </Card>
       </div>
-    </MainLayout>
+    </PublicLayout>
   );
 }

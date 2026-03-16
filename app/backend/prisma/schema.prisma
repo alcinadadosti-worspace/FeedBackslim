@@ -79,7 +79,7 @@ model Gestor {
 model Avaliacao {
   id          String   @id @default(uuid())
   gestorId    String
-  autorId     String
+  autorId     String?  // Null para avaliações anônimas
   nota        Int      // 1-10
   elogio      String?
   sugestao    String?
@@ -88,7 +88,7 @@ model Avaliacao {
 
   // Relações
   gestor      Gestor   @relation(fields: [gestorId], references: [id], onDelete: Cascade)
-  autor       User     @relation("AvaliacaoAutor", fields: [autorId], references: [id], onDelete: Cascade)
+  autor       User?    @relation("AvaliacaoAutor", fields: [autorId], references: [id], onDelete: SetNull)
 
   @@map("avaliacoes")
 }

@@ -61,8 +61,8 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
   }
 });
 
-// Criar avaliação
-router.post('/', authenticateToken, avaliacaoLimiter, async (req: AuthRequest, res: Response) => {
+// Criar avaliação (anônima - não requer autenticação)
+router.post('/', avaliacaoLimiter, async (req: AuthRequest, res: Response) => {
   try {
     const data = createAvaliacaoSchema.parse(req.body);
 
@@ -78,33 +78,14 @@ router.post('/', authenticateToken, avaliacaoLimiter, async (req: AuthRequest, r
       return res.status(404).json({ error: 'Gestor não encontrado' });
     }
 
-    // Não pode avaliar a si mesmo
-    if (gestor.userId === req.user!.id) {
-      return res.status(400).json({ error: 'Você não pode avaliar a si mesmo' });
-    }
-
-    // Criar avaliação
+    // Criar avaliação anônima (sem autorId)
     const avaliacao = await prisma.avaliacao.create({
       data: {
         gestorId: data.gestorId,
-        autorId: req.user!.id,
         nota: data.nota,
         elogio: data.elogio,
         sugestao: data.sugestao,
         critica: data.critica
-      },
-      include: {
-        autor: {
-          select: { nome: true }
-        }
-      }
-    });
-
-    // Registrar log para rate limiting
-    await prisma.avaliacaoLog.create({
-      data: {
-        autorId: req.user!.id,
-        gestorId: data.gestorId
       }
     });
 

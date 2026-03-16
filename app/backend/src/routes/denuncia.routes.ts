@@ -93,8 +93,8 @@ router.get('/stats', authenticateToken, requireAdmin, async (req: AuthRequest, r
   }
 });
 
-// Criar denúncia
-router.post('/', authenticateToken, denunciaLimiter, async (req: AuthRequest, res: Response) => {
+// Criar denúncia (anônima - não requer autenticação)
+router.post('/', denunciaLimiter, async (req: AuthRequest, res: Response) => {
   try {
     const data = createDenunciaSchema.parse(req.body);
 
@@ -110,14 +110,13 @@ router.post('/', authenticateToken, denunciaLimiter, async (req: AuthRequest, re
       return res.status(404).json({ error: 'Gestor não encontrado' });
     }
 
-    // Criar denúncia
+    // Criar denúncia anônima (sem autorId)
     const denuncia = await prisma.denuncia.create({
       data: {
         gestorId: data.gestorId,
-        autorId: data.anonima ? null : req.user!.id,
         tipo: data.tipo,
         descricao: data.descricao,
-        anonima: data.anonima
+        anonima: true // Sempre anônima
       }
     });
 

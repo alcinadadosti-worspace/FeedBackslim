@@ -22,8 +22,8 @@ const createGestorSchema = z.object({
   slackUserId: z.string().optional()
 });
 
-// Listar todos os gestores (público para colaboradores)
-router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
+// Listar todos os gestores (público - sem autenticação)
+router.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const gestores = await prisma.gestor.findMany({
       include: {
@@ -50,8 +50,8 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
   }
 });
 
-// Ranking de gestores
-router.get('/ranking', authenticateToken, async (req: AuthRequest, res: Response) => {
+// Ranking de gestores (público - sem autenticação)
+router.get('/ranking', async (req: AuthRequest, res: Response) => {
   try {
     const gestores = await prisma.gestor.findMany({
       where: {
@@ -78,8 +78,8 @@ router.get('/ranking', authenticateToken, async (req: AuthRequest, res: Response
   }
 });
 
-// Obter gestor por ID (perfil público)
-router.get('/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
+// Obter gestor por ID (público - sem autenticação)
+router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const gestor = await prisma.gestor.findUnique({
       where: { id: req.params.id },

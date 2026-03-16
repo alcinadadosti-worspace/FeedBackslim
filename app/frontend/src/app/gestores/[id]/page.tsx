@@ -3,22 +3,20 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Star, MessageSquare, ThumbsUp, Lightbulb, AlertCircle } from 'lucide-react';
-import { MainLayout } from '@/components/layout/MainLayout';
+import { Star, MessageSquare, ThumbsUp, Lightbulb, AlertCircle } from 'lucide-react';
+import { PublicLayout } from '@/components/layout/PublicLayout';
 import { Card, CardTitle, CardContent } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge, BadgeIcon } from '@/components/ui/Badge';
 import { SimpleRating } from '@/components/ui/Rating';
 import { Button } from '@/components/ui/Button';
 import { Loading } from '@/components/ui/Loading';
-import { useAuthStore } from '@/store/auth';
 import { gestoresAPI } from '@/lib/api';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function GestorPerfilPage() {
   const params = useParams();
-  const { user } = useAuthStore();
   const [gestor, setGestor] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -41,21 +39,21 @@ export default function GestorPerfilPage() {
 
   if (loading) {
     return (
-      <MainLayout>
+      <PublicLayout>
         <div className="flex justify-center py-12">
           <Loading size="lg" />
         </div>
-      </MainLayout>
+      </PublicLayout>
     );
   }
 
   if (!gestor) {
     return (
-      <MainLayout>
+      <PublicLayout>
         <div className="text-center py-12">
           <p className="text-neutral-500">Gestor não encontrado</p>
         </div>
-      </MainLayout>
+      </PublicLayout>
     );
   }
 
@@ -64,14 +62,8 @@ export default function GestorPerfilPage() {
   const criticas = gestor.avaliacoes?.filter((a: any) => a.critica) || [];
 
   return (
-    <MainLayout>
+    <PublicLayout>
       <div className="max-w-5xl mx-auto">
-        {/* Back Button */}
-        <Link href="/gestores" className="inline-flex items-center gap-2 text-neutral-600 hover:text-neutral-900 mb-6">
-          <ArrowLeft className="w-5 h-5" />
-          Voltar para lista
-        </Link>
-
         {/* Profile Header */}
         <Card className="mb-8">
           <div className="flex flex-col md:flex-row gap-6">
@@ -118,14 +110,12 @@ export default function GestorPerfilPage() {
                 </p>
               </div>
 
-              {user?.role === 'COLABORADOR' && (
-                <Link href={`/avaliar?gestor=${gestor.id}`} className="mt-4">
-                  <Button variant="primary">
-                    <Star className="w-5 h-5" />
-                    Avaliar
-                  </Button>
-                </Link>
-              )}
+              <Link href={`/avaliar?gestor=${gestor.id}`} className="mt-4">
+                <Button variant="primary">
+                  <Star className="w-5 h-5" />
+                  Avaliar
+                </Button>
+              </Link>
             </div>
           </div>
         </Card>
@@ -229,6 +219,6 @@ export default function GestorPerfilPage() {
           </CardContent>
         </Card>
       </div>
-    </MainLayout>
+    </PublicLayout>
   );
 }

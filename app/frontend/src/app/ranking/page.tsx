@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Trophy, Medal, Star } from 'lucide-react';
-import { MainLayout } from '@/components/layout/MainLayout';
+import { Trophy, Star } from 'lucide-react';
+import { PublicLayout } from '@/components/layout/PublicLayout';
 import { Card, CardTitle, CardContent } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
 import { BadgeIcon } from '@/components/ui/Badge';
@@ -44,7 +44,7 @@ export default function RankingPage() {
   };
 
   return (
-    <MainLayout>
+    <PublicLayout>
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
@@ -175,6 +175,6 @@ export default function RankingPage() {
           </div>
         )}
       </div>
-    </MainLayout>
+    </PublicLayout>
   );
 }
