@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: pulse360-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pulse360}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pulse360secret}
+      POSTGRES_DB: ${POSTGRES_DB:-pulse360}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - pulse360-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pulse360}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: ./app/backend
+      dockerfile: Dockerfile
+    container_name: pulse360-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-pulse360}:${POSTGRES_PASSWORD:-pulse360secret}@postgres:5432/${POSTGRES_DB:-pulse360}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key}
+      PORT: 3001
+      BACKEND_URL: ${BACKEND_URL:-http://localhost:3001}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
+      SLACK_RH_CHANNEL: ${SLACK_RH_CHANNEL:-rh-notifications}
+    ports:
+      - "3001:3001"
+    volumes:
+      - backend_uploads:/app/uploads
+    networks:
+      - pulse360-network
+
+  # Frontend Web App
+  frontend:
+    build:
+      context: ./app/frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001/api}
+    container_name: pulse360-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001/api}
+    ports:
+      - "3000:3000"
+    networks:
+      - pulse360-network
+
+  # Slack Bot (optional)
+  slack-bot:
+    build:
+      context: ./app/slack-bot
+      dockerfile: Dockerfile
+    container_name: pulse360-slack-bot
+    restart: unless-stopped
+    profiles:
+      - slack
+    depends_on:
+      - backend
+    environment:
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN}
+      SLACK_SIGNING_SECRET: ${SLACK_SIGNING_SECRET}
+      SLACK_APP_TOKEN: ${SLACK_APP_TOKEN}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      SLACK_RH_CHANNEL: ${SLACK_RH_CHANNEL:-rh-notifications}
+      PORT: 3002
+    ports:
+      - "3002:3002"
+    networks:
+      - pulse360-network
+
+volumes:
+  postgres_data:
+  backend_uploads:
+
+networks:
+  pulse360-network:
+    driver: bridge

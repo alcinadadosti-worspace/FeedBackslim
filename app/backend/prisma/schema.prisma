@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  COLABORADOR
+  GESTOR
+  RH_ADMIN
+}
+
+enum TipoDenuncia {
+  ASSEDIO_MORAL
+  COMPORTAMENTO_INADEQUADO
+  ABUSO_AUTORIDADE
+  OUTROS
+}
+
+enum StatusDenuncia {
+  PENDENTE
+  EM_ANALISE
+  RESOLVIDA
+  ARQUIVADA
+}
+
+enum BadgeType {
+  LIDER_INSPIRADOR
+  COMUNICADOR
+  MENTOR
+  INOVADOR
+  COLABORATIVO
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password      String
+  nome          String
+  role          Role     @default(COLABORADOR)
+  avatar        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relações
+  gestor        Gestor?
+  avaliacoes    Avaliacao[]    @relation("AvaliacaoAutor")
+  denuncias     Denuncia[]     @relation("DenunciaAutor")
+
+  @@map("users")
+}
+
+model Gestor {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  cargo           String
+  departamento    String?
+  foto            String?
+  bio             String?
+  slackUserId     String?
+  mediaAvaliacao  Float    @default(0)
+  totalAvaliacoes Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relações
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  avaliacoes  Avaliacao[]
+  denuncias   Denuncia[]
+  badges      Badge[]
+
+  @@map("gestores")
+}
+
+model Avaliacao {
+  id          String   @id @default(uuid())
+  gestorId    String
+  autorId     String
+  nota        Int      // 1-10
+  elogio      String?
+  sugestao    String?
+  critica     String?
+  createdAt   DateTime @default(now())
+
+  // Relações
+  gestor      Gestor   @relation(fields: [gestorId], references: [id], onDelete: Cascade)
+  autor       User     @relation("AvaliacaoAutor", fields: [autorId], references: [id], onDelete: Cascade)
+
+  @@map("avaliacoes")
+}
+
+model Denuncia {
+  id          String          @id @default(uuid())
+  gestorId    String
+  autorId     String?         // Null se anônima
+  tipo        TipoDenuncia
+  descricao   String
+  anonima     Boolean         @default(true)
+  status      StatusDenuncia  @default(PENDENTE)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  // Relações
+  gestor      Gestor          @relation(fields: [gestorId], references: [id], onDelete: Cascade)
+  autor       User?           @relation("DenunciaAutor", fields: [autorId], references: [id], onDelete: SetNull)
+
+  @@map("denuncias")
+}
+
+model Badge {
+  id          String    @id @default(uuid())
+  gestorId    String
+  tipo        BadgeType
+  descricao   String
+  dataConquista DateTime @default(now())
+
+  // Relações
+  gestor      Gestor    @relation(fields: [gestorId], references: [id], onDelete: Cascade)
+
+  @@map("badges")
+}
+
+model AvaliacaoLog {
+  id          String   @id @default(uuid())
+  autorId     String
+  gestorId    String
+  createdAt   DateTime @default(now())
+
+  @@index([autorId, gestorId, createdAt])
+  @@map("avaliacao_logs")
+}
