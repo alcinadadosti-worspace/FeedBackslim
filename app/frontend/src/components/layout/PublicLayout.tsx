@@ -21,9 +21,9 @@ export function PublicLayout({ children, showBackButton = true }: PublicLayoutPr
             )}
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-primary-500 border-2 border-neutral-900 flex items-center justify-center font-black text-white text-sm">
-                P
+                O
               </div>
-              <span className="font-black text-xl text-neutral-900">Pulse360</span>
+              <span className="font-black text-xl text-neutral-900">Ouvidoria</span>
             </div>
           </Link>
 
@@ -44,7 +44,7 @@ export function PublicLayout({ children, showBackButton = true }: PublicLayoutPr
       {/* Footer */}
       <footer className="border-t-3 border-neutral-900 bg-white px-6 py-4 mt-auto">
         <div className="max-w-6xl mx-auto text-center text-sm text-neutral-500">
-          <p>Pulse360 - Plataforma de Feedback Empresarial</p>
+          <p>Ouvidoria - Plataforma de Feedback Empresarial</p>
           <p className="mt-1">Suas respostas sao anonimas e confidenciais.</p>
         </div>
       </footer>

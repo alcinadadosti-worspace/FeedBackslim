@@ -94,9 +94,9 @@ export function Sidebar() {
       <div className="p-6 border-b-3 border-neutral-900">
         <Link href="/dashboard" className="flex items-center gap-3">
           <div className="w-10 h-10 bg-primary-500 border-3 border-neutral-900 flex items-center justify-center">
-            <span className="font-bold text-lg">P</span>
+            <span className="font-bold text-lg">O</span>
           </div>
-          <span className="font-display font-bold text-xl">Pulse360</span>
+          <span className="font-display font-bold text-xl">Ouvidoria</span>
         </Link>
       </div>
 

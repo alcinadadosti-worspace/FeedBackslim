@@ -69,9 +69,9 @@ export default function RegistroPage() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-4">
             <div className="w-12 h-12 bg-primary-500 border-3 border-neutral-900 shadow-brutal flex items-center justify-center">
-              <span className="font-bold text-2xl">P</span>
+              <span className="font-bold text-2xl">O</span>
             </div>
-            <span className="font-display font-bold text-3xl">Pulse360</span>
+            <span className="font-display font-bold text-3xl">Ouvidoria</span>
           </div>
           <p className="text-neutral-600 font-medium">
             Crie sua conta na plataforma

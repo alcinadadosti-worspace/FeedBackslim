@@ -68,7 +68,7 @@ async function startServer() {
   });
 
   app.listen(port, hostname, () => {
-    console.log(`> Pulse360 running on http://${hostname}:${port}`);
+    console.log(`> Ouvidoria running on http://${hostname}:${port}`);
     console.log(`> Environment: ${process.env.NODE_ENV || 'development'}`);
   });
 }

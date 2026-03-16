@@ -11,9 +11,9 @@ export default function HomePage() {
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 bg-primary-500 border-3 border-neutral-900 flex items-center justify-center font-black text-white text-lg">
-              P
+              O
             </div>
-            <span className="font-black text-2xl text-neutral-900">Pulse360</span>
+            <span className="font-black text-2xl text-neutral-900">Ouvidoria</span>
           </div>
 
           <Link
@@ -112,7 +112,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="border-t-3 border-neutral-900 bg-white px-6 py-6">
         <div className="max-w-4xl mx-auto text-center text-sm text-neutral-500">
-          <p className="font-medium">Pulse360 - Plataforma de Feedback Empresarial</p>
+          <p className="font-medium">Ouvidoria - Plataforma de Feedback Empresarial</p>
           <p className="mt-1">Construindo um ambiente de trabalho melhor, uma voz de cada vez.</p>
         </div>
       </footer>

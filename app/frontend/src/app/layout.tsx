@@ -3,7 +3,7 @@ import { Toaster } from 'react-hot-toast';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Pulse360 - Plataforma de Feedback',
+  title: 'Ouvidoria - Plataforma de Feedback',
   description: 'Avalie gestores, dê feedback e contribua para um ambiente de trabalho melhor.',
 };
 

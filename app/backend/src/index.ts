@@ -48,7 +48,7 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 });
 
 app.listen(PORT, () => {
-  console.log(`Pulse360 API running on port ${PORT}`);
+  console.log(`Ouvidoria API running on port ${PORT}`);
 });
 
 export default app;

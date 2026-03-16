@@ -13,7 +13,7 @@ const api = axios.create({
 // Interceptor para adicionar token
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('pulse360_token');
+    const token = localStorage.getItem('ouvidoria_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -27,8 +27,8 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('pulse360_token');
-        localStorage.removeItem('pulse360_user');
+        localStorage.removeItem('ouvidoria_token');
+        localStorage.removeItem('ouvidoria_user');
         window.location.href = '/login';
       }
     }

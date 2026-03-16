@@ -64,12 +64,12 @@ function startNextServer(): ChildProcess {
   return proc;
 }
 
-console.log('Starting Pulse360...');
+console.log('Starting Ouvidoria...');
 const nextProcess = startNextServer();
 
 setTimeout(() => {
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`> Pulse360 running on http://0.0.0.0:${PORT}`);
+    console.log(`> Ouvidoria running on http://0.0.0.0:${PORT}`);
     console.log(`> API at /api, Frontend proxied from :${NEXT_PORT}`);
   });
 }, 2000);

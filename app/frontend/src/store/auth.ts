@@ -41,8 +41,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const response = await authAPI.login(email, password);
     const { user, token } = response.data;
 
-    localStorage.setItem('pulse360_token', token);
-    localStorage.setItem('pulse360_user', JSON.stringify(user));
+    localStorage.setItem('ouvidoria_token', token);
+    localStorage.setItem('ouvidoria_user', JSON.stringify(user));
 
     set({
       user,
@@ -56,8 +56,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const response = await authAPI.register(data);
     const { user, token } = response.data;
 
-    localStorage.setItem('pulse360_token', token);
-    localStorage.setItem('pulse360_user', JSON.stringify(user));
+    localStorage.setItem('ouvidoria_token', token);
+    localStorage.setItem('ouvidoria_user', JSON.stringify(user));
 
     set({
       user,
@@ -68,8 +68,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
-    localStorage.removeItem('pulse360_token');
-    localStorage.removeItem('pulse360_user');
+    localStorage.removeItem('ouvidoria_token');
+    localStorage.removeItem('ouvidoria_user');
 
     set({
       user: null,
@@ -81,8 +81,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   loadUser: async () => {
     try {
-      const token = localStorage.getItem('pulse360_token');
-      const savedUser = localStorage.getItem('pulse360_user');
+      const token = localStorage.getItem('ouvidoria_token');
+      const savedUser = localStorage.getItem('ouvidoria_user');
 
       if (!token) {
         set({ isLoading: false, isAuthenticated: false });
@@ -103,7 +103,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const response = await authAPI.me();
       const user = response.data;
 
-      localStorage.setItem('pulse360_user', JSON.stringify(user));
+      localStorage.setItem('ouvidoria_user', JSON.stringify(user));
 
       set({
         user,
@@ -112,8 +112,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isLoading: false,
       });
     } catch (error) {
-      localStorage.removeItem('pulse360_token');
-      localStorage.removeItem('pulse360_user');
+      localStorage.removeItem('ouvidoria_token');
+      localStorage.removeItem('ouvidoria_user');
       set({
         user: null,
         token: null,
@@ -127,7 +127,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const currentUser = get().user;
     if (currentUser) {
       const updatedUser = { ...currentUser, ...userData };
-      localStorage.setItem('pulse360_user', JSON.stringify(updatedUser));
+      localStorage.setItem('ouvidoria_user', JSON.stringify(updatedUser));
       set({ user: updatedUser });
     }
   },
