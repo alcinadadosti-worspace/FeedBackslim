@@ -63,8 +63,31 @@ pulse360/
 ### Pré-requisitos
 
 - Node.js 20+
-- PostgreSQL 15+ (ou Docker)
+- Conta no [Supabase](https://supabase.com) (gratuito)
 - npm ou yarn
+
+### Configuração do Supabase
+
+1. **Crie um projeto no Supabase**
+   - Acesse [supabase.com](https://supabase.com) e crie uma conta
+   - Clique em "New Project"
+   - Escolha um nome e senha para o banco
+
+2. **Obtenha as URLs de conexão**
+   - Vá em **Settings** > **Database**
+   - Em **Connection string**, copie a **URI**
+   - Você precisará de duas URLs:
+     - **Transaction (porta 6543)**: Para a aplicação
+     - **Session (porta 5432)**: Para migrations
+
+3. **Configure as variáveis**
+   ```env
+   # URL com pooler (aplicação)
+   DATABASE_URL="postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres?pgbouncer=true"
+
+   # URL direta (migrations)
+   DIRECT_URL="postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres"
+   ```
 
 ### Desenvolvimento Local
 
@@ -76,9 +99,17 @@ cd FeedBackslim
 
 2. **Configure as variáveis de ambiente**
 ```bash
+# Na raiz do projeto
 cp .env.example .env
-# Edite o arquivo .env com suas configurações
+
+# No backend
+cp app/backend/.env.example app/backend/.env
+
+# No frontend
+cp app/frontend/.env.example app/frontend/.env
 ```
+
+Edite os arquivos `.env` com suas credenciais do Supabase.
 
 3. **Instale as dependências do Backend**
 ```bash
@@ -91,8 +122,8 @@ npm install
 # Gerar o cliente Prisma
 npm run db:generate
 
-# Executar as migrations
-npm run db:migrate
+# Executar as migrations (push para Supabase)
+npm run db:push
 
 # Popular com dados de exemplo
 npm run db:seed
@@ -182,7 +213,8 @@ SLACK_RH_CHANNEL=id-do-canal-rh
 
 | Variável | Descrição | Obrigatório |
 |----------|-----------|-------------|
-| `DATABASE_URL` | URL de conexão PostgreSQL | Sim |
+| `DATABASE_URL` | URL Supabase com pooler (porta 6543) | Sim |
+| `DIRECT_URL` | URL Supabase direta (porta 5432) | Sim |
 | `JWT_SECRET` | Chave secreta para JWT | Sim |
 | `FRONTEND_URL` | URL do frontend | Sim |
 | `BACKEND_URL` | URL do backend | Sim |
@@ -202,7 +234,7 @@ Após executar o seed, você pode acessar com:
 | Gestor | carlos.silva@pulse360.com | 123456 |
 | Colaborador | joao.pereira@pulse360.com | 123456 |
 
-## Deploy no Render
+## Deploy no Render (com Supabase)
 
 ### Backend
 
@@ -210,8 +242,13 @@ Após executar o seed, você pode acessar com:
 2. Conecte ao repositório
 3. **Root Directory:** `app/backend`
 4. **Build Command:** `npm install && npx prisma generate && npm run build`
-5. **Start Command:** `npx prisma migrate deploy && npm start`
-6. Configure as variáveis de ambiente
+5. **Start Command:** `npx prisma db push && npm start`
+6. Configure as variáveis de ambiente:
+   - `DATABASE_URL` - URL do Supabase (porta 6543)
+   - `DIRECT_URL` - URL do Supabase (porta 5432)
+   - `JWT_SECRET` - Chave secreta forte
+   - `FRONTEND_URL` - URL do frontend no Render
+   - `BACKEND_URL` - URL deste serviço
 
 ### Frontend
 
@@ -220,13 +257,18 @@ Após executar o seed, você pode acessar com:
 3. **Root Directory:** `app/frontend`
 4. **Build Command:** `npm install && npm run build`
 5. **Start Command:** `npm start`
-6. Configure `NEXT_PUBLIC_API_URL` com a URL do backend
+6. Configure as variáveis:
+   - `NEXT_PUBLIC_API_URL` - URL do backend + `/api`
 
-### Banco de Dados
+### Banco de Dados (Supabase)
 
-1. Crie um **PostgreSQL** no Render
-2. Copie a **Internal Database URL**
-3. Use como `DATABASE_URL` no backend
+1. Use o projeto Supabase já criado
+2. As tabelas serão criadas automaticamente no primeiro deploy
+3. Para popular dados iniciais, execute localmente:
+   ```bash
+   cd app/backend
+   npm run db:seed
+   ```
 
 ## API Endpoints
 

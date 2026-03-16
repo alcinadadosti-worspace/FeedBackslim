@@ -11,6 +11,7 @@ interface User {
     id: string;
     cargo: string;
     departamento?: string;
+    bio?: string;
     foto?: string;
     slackUserId?: string;
     mediaAvaliacao: number;

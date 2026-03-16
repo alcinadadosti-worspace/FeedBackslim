@@ -4,7 +4,14 @@
       "Bash(mkdir:*)",
       "Bash(git init:*)",
       "Bash(git add:*)",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial commit: Pulse360 - Employee Feedback Platform\n\nFeatures:\n- Backend API REST with Node.js, Express, Prisma\n- Frontend with Next.js 14, React 18, TailwindCSS\n- PostgreSQL database with complete schema\n- JWT authentication with role-based access\n- Slack Bot integration for notifications\n- Docker and Docker Compose configuration\n- Neobrutalismo elegant design system\n\nIncludes:\n- Manager evaluation system \\(ratings 1-10\\)\n- Confidential complaint system \\(Ouvidoria\\)\n- Manager public profiles with badges\n- Dashboard for employees, managers, and HR\n- Manager ranking system\n- Rate limiting for spam protection\n- Data export functionality\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial commit: Pulse360 - Employee Feedback Platform\n\nFeatures:\n- Backend API REST with Node.js, Express, Prisma\n- Frontend with Next.js 14, React 18, TailwindCSS\n- PostgreSQL database with complete schema\n- JWT authentication with role-based access\n- Slack Bot integration for notifications\n- Docker and Docker Compose configuration\n- Neobrutalismo elegant design system\n\nIncludes:\n- Manager evaluation system \\(ratings 1-10\\)\n- Confidential complaint system \\(Ouvidoria\\)\n- Manager public profiles with badges\n- Dashboard for employees, managers, and HR\n- Manager ranking system\n- Rate limiting for spam protection\n- Data export functionality\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(npm install)",
+      "Bash(npx prisma:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

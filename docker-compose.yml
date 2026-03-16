@@ -1,27 +1,6 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
-    container_name: pulse360-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-pulse360}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pulse360secret}
-      POSTGRES_DB: ${POSTGRES_DB:-pulse360}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    networks:
-      - pulse360-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pulse360}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   # Backend API
   backend:
     build:
@@ -29,11 +8,9 @@ services:
       dockerfile: Dockerfile
     container_name: pulse360-backend
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-pulse360}:${POSTGRES_PASSWORD:-pulse360secret}@postgres:5432/${POSTGRES_DB:-pulse360}?schema=public
+      DATABASE_URL: ${DATABASE_URL}
+      DIRECT_URL: ${DIRECT_URL}
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key}
       PORT: 3001
       BACKEND_URL: ${BACKEND_URL:-http://localhost:3001}
@@ -89,7 +66,6 @@ services:
       - pulse360-network
 
 volumes:
-  postgres_data:
   backend_uploads:
 
 networks:
