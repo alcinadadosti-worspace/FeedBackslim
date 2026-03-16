@@ -34,7 +34,8 @@
       "Bash(node test-proxy.js:*)",
       "Bash(cmd /c \"taskkill /F /PID 28088\")",
       "Bash(dir \"C:\\\\Users\\\\carlo\\\\Documents\\\\FeedBacks\\\\app\\\\frontend\\\\.next\\\\standalone\")",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(node -e:*)"
     ]
   }
 }
