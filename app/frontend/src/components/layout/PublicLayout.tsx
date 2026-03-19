@@ -35,7 +35,7 @@ export function PublicLayout({ children, showBackButton = true }: PublicLayoutPr
               <ArrowLeft className="w-5 h-5 text-neutral-600 group-hover:text-primary-500 transition-colors" />
             )}
             <div className="flex items-center gap-2">
-              <Logo size="sm" className="shadow-none border-2" />
+              <Logo size="md" className="shadow-none border-2" />
               <span className="font-black text-xl text-neutral-900">Ouvidoria</span>
             </div>
           </Link>

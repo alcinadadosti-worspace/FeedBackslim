@@ -3,9 +3,9 @@ import clsx from 'clsx';
 type LogoSize = 'sm' | 'md' | 'lg';
 
 const sizeMap: Record<LogoSize, string> = {
-  sm: 'w-6 h-6',
-  md: 'w-9 h-9',
-  lg: 'w-12 h-12'
+  sm: 'w-8 h-8',
+  md: 'w-10 h-10',
+  lg: 'w-14 h-14'
 };
 
 export function LogoMark({ size = 'md', className }: { size?: LogoSize; className?: string }) {
@@ -123,11 +123,11 @@ export function Logo({ size = 'md', className }: { size?: LogoSize; className?: 
     <div
       className={clsx(
         'bg-white border-3 border-neutral-900 shadow-brutal flex items-center justify-center',
-        size === 'sm' ? 'w-8 h-8' : size === 'lg' ? 'w-12 h-12' : 'w-10 h-10',
+        size === 'sm' ? 'w-10 h-10' : size === 'lg' ? 'w-16 h-16' : 'w-12 h-12',
         className
       )}
     >
-      <LogoMark size={size} className={clsx(size === 'sm' ? 'w-6 h-6' : size === 'lg' ? 'w-10 h-10' : 'w-8 h-8')} />
+      <LogoMark size={size} />
     </div>
   );
 }

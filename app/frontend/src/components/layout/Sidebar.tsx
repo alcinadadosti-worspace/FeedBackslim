@@ -131,7 +131,7 @@ export function Sidebar() {
       {/* User Section */}
       <div className="p-4 border-t-3 border-neutral-900">
         <div className="flex items-center gap-3 mb-4">
-          <Avatar src={user?.avatar} alt={user?.nome} size="sm" />
+          <Avatar src={user?.gestor?.foto || user?.avatar} alt={user?.nome} size="sm" />
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-neutral-900 truncate">{user?.nome}</p>
             <p className="text-xs text-neutral-500 uppercase">{user?.role?.replace('_', ' ')}</p>
