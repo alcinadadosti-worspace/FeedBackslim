@@ -1,9 +1,6 @@
 import { Router, Response } from 'express';
 import multer from 'multer';
-import { v4 as uuidv4 } from 'uuid';
-import { getStorage } from 'firebase-admin/storage';
 import { authenticateToken, AuthRequest } from '../middleware/auth.middleware';
-import { getFirebaseAdminApp } from '../firebase';
 
 const router = Router();
 
@@ -23,31 +20,9 @@ const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB
+    fileSize: 250 * 1024 // 250KB
   }
 });
-
-function getProjectIdFromEnv(): string | undefined {
-  if (process.env.FIREBASE_PROJECT_ID) return process.env.FIREBASE_PROJECT_ID;
-  const json = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-  if (!json) return undefined;
-  try {
-    const parsed = JSON.parse(json) as any;
-    return parsed.project_id || parsed.projectId;
-  } catch {
-    return undefined;
-  }
-}
-
-function getStorageBucketName(): string {
-  const explicit = process.env.FIREBASE_STORAGE_BUCKET;
-  if (explicit) return explicit;
-  const projectId = getProjectIdFromEnv();
-  if (!projectId) {
-    throw new Error('Não foi possível determinar o bucket do Firebase Storage (FIREBASE_STORAGE_BUCKET ou FIREBASE_PROJECT_ID/FIREBASE_SERVICE_ACCOUNT_JSON)');
-  }
-  return `${projectId}.appspot.com`;
-}
 
 // Upload de imagem
 router.post('/', authenticateToken, upload.single('file'), async (req: AuthRequest, res: Response) => {
@@ -56,44 +31,20 @@ router.post('/', authenticateToken, upload.single('file'), async (req: AuthReque
       return res.status(400).json({ error: 'Nenhum arquivo enviado' });
     }
 
-    const app = getFirebaseAdminApp();
-    const bucketName = getStorageBucketName();
-
-    const extFromMime: Record<string, string> = {
-      'image/jpeg': '.jpg',
-      'image/png': '.png',
-      'image/gif': '.gif',
-      'image/webp': '.webp'
-    };
-    const ext = extFromMime[req.file.mimetype] || '';
-    const filename = `${uuidv4()}${ext}`;
-    const objectPath = `uploads/${filename}`;
-
-    const bucket = getStorage(app).bucket(bucketName);
-    const file = bucket.file(objectPath);
-    await file.save(req.file.buffer, {
-      contentType: req.file.mimetype,
-      resumable: false,
-      metadata: {
-        cacheControl: 'public, max-age=31536000'
-      }
-    });
-
-    const [signedUrl] = await file.getSignedUrl({
-      action: 'read',
-      expires: Date.now() + 1000 * 60 * 60 * 24 * 365 * 10
-    });
+    const base64 = req.file.buffer.toString('base64');
+    const dataUrl = `data:${req.file.mimetype};base64,${base64}`;
 
     res.json({
-      url: signedUrl,
-      filename,
-      path: objectPath,
+      url: dataUrl,
       size: req.file.size,
       mimetype: req.file.mimetype
     });
   } catch (error) {
     console.error(error);
-    const message = error instanceof Error ? error.message : 'Erro ao fazer upload';
+    const message =
+      error instanceof Error
+        ? error.message
+        : 'Erro ao fazer upload';
     res.status(500).json({ error: message });
   }
 });
@@ -101,11 +52,6 @@ router.post('/', authenticateToken, upload.single('file'), async (req: AuthReque
 // Deletar imagem
 router.delete('/:filename', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const app = getFirebaseAdminApp();
-    const bucketName = getStorageBucketName();
-    const bucket = getStorage(app).bucket(bucketName);
-    const file = bucket.file(`uploads/${req.params.filename}`);
-    await file.delete({ ignoreNotFound: true });
     res.json({ message: 'Arquivo deletado com sucesso' });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Erro ao deletar arquivo';
