@@ -125,26 +125,6 @@ export default function LoginPage() {
               <ArrowRight className="w-5 h-5" />
             </Button>
           </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-neutral-600">
-              Não tem uma conta?{' '}
-              <Link href="/registro" className="font-bold text-primary-700 hover:underline">
-                Registre-se
-              </Link>
-            </p>
-          </div>
-        </Card>
-
-        {/* Demo Credentials */}
-        <Card className="mt-4 bg-neutral-100">
-          <h3 className="font-bold text-sm mb-2">Credenciais de Demo:</h3>
-          <div className="text-sm text-neutral-600 space-y-1">
-            <p><strong>Admin:</strong> admin@pulse360.com</p>
-            <p><strong>Gestor:</strong> carlos.silva@pulse360.com</p>
-            <p><strong>Colaborador:</strong> joao.pereira@pulse360.com</p>
-            <p className="text-xs mt-2">Senha: 123456</p>
-          </div>
         </Card>
       </div>
     </div>
