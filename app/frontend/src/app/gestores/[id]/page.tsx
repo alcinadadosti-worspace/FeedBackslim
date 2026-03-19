@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Star, MessageSquare, ThumbsUp, Lightbulb, AlertCircle } from 'lucide-react';
-import { PublicLayout } from '@/components/layout/PublicLayout';
+import { SmartLayout } from '@/components/layout/SmartLayout';
 import { Card, CardTitle, CardContent } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge, BadgeIcon } from '@/components/ui/Badge';

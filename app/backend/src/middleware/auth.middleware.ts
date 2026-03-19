@@ -1,8 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { PrismaClient, Role } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { Role } from '../models';
+import { docRef, snapData } from '../firestoreRepo';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -31,9 +30,8 @@ export const authenticateToken = async (
       role: Role;
     };
 
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.id }
-    });
+    const userSnap = await docRef('users', decoded.id).get();
+    const user = snapData<{ email: string; role: Role }>(userSnap as any);
 
     if (!user) {
       return res.status(401).json({ error: 'Usuário não encontrado' });

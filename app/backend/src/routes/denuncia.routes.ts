@@ -1,12 +1,14 @@
 import { Router, Response } from 'express';
-import { PrismaClient, Role, TipoDenuncia, StatusDenuncia } from '@prisma/client';
+import { v4 as uuidv4 } from 'uuid';
+import type { Query } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { authenticateToken, AuthRequest, requireAdmin } from '../middleware/auth.middleware';
 import { denunciaLimiter } from '../middleware/rateLimit.middleware';
 import { sendComplaintNotification } from '../services/slack.service';
+import { StatusDenuncia, TipoDenuncia } from '../models';
+import { col, docRef, getManyByIds, normalizeFirestoreData, snapData } from '../firestoreRepo';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 const createDenunciaSchema = z.object({
   gestorId: z.string().uuid('ID do gestor inválido'),
@@ -24,35 +26,47 @@ router.get('/', authenticateToken, requireAdmin, async (req: AuthRequest, res: R
   try {
     const { gestorId, status, tipo, page = '1', limit = '20' } = req.query;
 
-    const where: any = {};
-    if (gestorId) where.gestorId = gestorId;
-    if (status) where.status = status;
-    if (tipo) where.tipo = tipo;
+    const take = Number(limit);
+    const skip = (Number(page) - 1) * take;
 
-    const denuncias = await prisma.denuncia.findMany({
-      where,
-      include: {
-        gestor: {
-          include: {
-            user: { select: { nome: true } }
-          }
-        },
-        autor: {
-          select: { nome: true }
-        }
-      },
-      orderBy: { createdAt: 'desc' },
-      skip: (Number(page) - 1) * Number(limit),
-      take: Number(limit)
+    let query: Query = col('denuncias');
+    if (gestorId) query = query.where('gestorId', '==', gestorId);
+    if (status) query = query.where('status', '==', status);
+    if (tipo) query = query.where('tipo', '==', tipo);
+
+    const pagedSnap = await query.orderBy('createdAt', 'desc').offset(skip).limit(take).get();
+    const denuncias = pagedSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
+
+    const totalSnap = await query.get();
+    const total = totalSnap.size;
+
+    const gestorIds = denuncias.map((d: any) => d.gestorId).filter(Boolean);
+    const autorIds = denuncias.map((d: any) => d.autorId).filter(Boolean);
+    const gestoresById = await getManyByIds<any>('gestores', gestorIds);
+    const gestorUserIds = Object.values(gestoresById).map((g: any) => (g as any).userId).filter(Boolean);
+    const usersById = await getManyByIds<any>('users', [...autorIds, ...gestorUserIds]);
+
+    const denunciasComIncludes = denuncias.map((d: any) => {
+      const gestor = gestoresById[d.gestorId];
+      const gestorUser = gestor ? usersById[(gestor as any).userId] : undefined;
+      const autor = d.autorId ? usersById[d.autorId] : undefined;
+      return {
+        ...d,
+        gestor: gestor
+          ? {
+              ...(gestor as any),
+              user: gestorUser ? { nome: (gestorUser as any).nome } : null
+            }
+          : null,
+        autor: autor ? { nome: (autor as any).nome } : null
+      };
     });
 
     // Ocultar autor em denúncias anônimas
-    const denunciasFormatadas = denuncias.map(d => ({
+    const denunciasFormatadas = denunciasComIncludes.map((d: any) => ({
       ...d,
       autor: d.anonima ? null : d.autor
     }));
-
-    const total = await prisma.denuncia.count({ where });
 
     res.json({
       data: denunciasFormatadas,
@@ -71,22 +85,24 @@ router.get('/', authenticateToken, requireAdmin, async (req: AuthRequest, res: R
 // Estatísticas de denúncias (admin)
 router.get('/stats', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const [total, porStatus, porTipo] = await Promise.all([
-      prisma.denuncia.count(),
-      prisma.denuncia.groupBy({
-        by: ['status'],
-        _count: true
-      }),
-      prisma.denuncia.groupBy({
-        by: ['tipo'],
-        _count: true
-      })
-    ]);
+    const snap = await col('denuncias').get();
+    const denuncias = snap.docs.map((d: any) => normalizeFirestoreData(d.data()) as any);
+    const total = denuncias.length;
+
+    const porStatus = denuncias.reduce<Record<string, number>>((acc: Record<string, number>, d: any) => {
+      acc[d.status] = (acc[d.status] || 0) + 1;
+      return acc;
+    }, {});
+
+    const porTipo = denuncias.reduce<Record<string, number>>((acc: Record<string, number>, d: any) => {
+      acc[d.tipo] = (acc[d.tipo] || 0) + 1;
+      return acc;
+    }, {});
 
     res.json({
       total,
-      porStatus: porStatus.reduce((acc, s) => ({ ...acc, [s.status]: s._count }), {}),
-      porTipo: porTipo.reduce((acc, t) => ({ ...acc, [t.tipo]: t._count }), {})
+      porStatus,
+      porTipo
     });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao obter estatísticas' });
@@ -99,44 +115,47 @@ router.post('/', denunciaLimiter, async (req: AuthRequest, res: Response) => {
     const data = createDenunciaSchema.parse(req.body);
 
     // Verificar se o gestor existe
-    const gestor = await prisma.gestor.findUnique({
-      where: { id: data.gestorId },
-      include: {
-        user: { select: { nome: true } }
-      }
-    });
+    const gestorSnap = await docRef('gestores', data.gestorId).get();
+    const gestor = snapData<any>(gestorSnap as any);
 
     if (!gestor) {
       return res.status(404).json({ error: 'Gestor não encontrado' });
     }
 
     // Criar denúncia anônima (sem autorId)
-    const denuncia = await prisma.denuncia.create({
-      data: {
-        gestorId: data.gestorId,
-        tipo: data.tipo,
-        descricao: data.descricao,
-        anonima: true // Sempre anônima
-      }
+    const now = new Date();
+    const denunciaId = uuidv4();
+    await docRef('denuncias', denunciaId).set({
+      id: denunciaId,
+      gestorId: data.gestorId,
+      autorId: null,
+      tipo: data.tipo,
+      descricao: data.descricao,
+      anonima: true,
+      status: StatusDenuncia.PENDENTE,
+      createdAt: now,
+      updatedAt: now
     });
 
     // Enviar notificações Slack
     try {
+      const gestorUserSnap = await docRef('users', gestor.userId).get();
+      const gestorUser = snapData<any>(gestorUserSnap as any);
       await sendComplaintNotification({
         gestorSlackId: gestor.slackUserId || undefined,
-        gestorNome: gestor.user.nome,
+        gestorNome: gestorUser?.nome || 'Gestor',
         tipo: data.tipo,
-        denunciaId: denuncia.id
+        denunciaId: denunciaId
       });
     } catch (slackError) {
       console.error('Erro ao enviar notificação Slack:', slackError);
     }
 
     res.status(201).json({
-      id: denuncia.id,
-      tipo: denuncia.tipo,
-      status: denuncia.status,
-      createdAt: denuncia.createdAt,
+      id: denunciaId,
+      tipo: data.tipo,
+      status: StatusDenuncia.PENDENTE,
+      createdAt: now,
       message: 'Denúncia registrada com sucesso. O RH será notificado.'
     });
   } catch (error) {
@@ -153,10 +172,20 @@ router.patch('/:id/status', authenticateToken, requireAdmin, async (req: AuthReq
   try {
     const data = updateStatusSchema.parse(req.body);
 
-    const denuncia = await prisma.denuncia.update({
-      where: { id: req.params.id },
-      data: { status: data.status }
-    });
+    const now = new Date();
+    await docRef('denuncias', req.params.id).set(
+      {
+        status: data.status,
+        updatedAt: now
+      },
+      { merge: true }
+    );
+
+    const updatedSnap = await docRef('denuncias', req.params.id).get();
+    const denuncia = snapData<any>(updatedSnap as any);
+    if (!denuncia) {
+      return res.status(404).json({ error: 'Denúncia não encontrada' });
+    }
 
     res.json(denuncia);
   } catch (error) {
@@ -170,28 +199,26 @@ router.patch('/:id/status', authenticateToken, requireAdmin, async (req: AuthReq
 // Obter denúncia por ID (apenas admin)
 router.get('/:id', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const denuncia = await prisma.denuncia.findUnique({
-      where: { id: req.params.id },
-      include: {
-        gestor: {
-          include: {
-            user: { select: { nome: true } }
-          }
-        },
-        autor: {
-          select: { nome: true }
-        }
-      }
-    });
+    const denunciaSnap = await docRef('denuncias', req.params.id).get();
+    const denuncia = snapData<any>(denunciaSnap as any);
 
     if (!denuncia) {
       return res.status(404).json({ error: 'Denúncia não encontrada' });
     }
 
+    const gestorSnap = await docRef('gestores', denuncia.gestorId).get();
+    const gestor = snapData<any>(gestorSnap as any);
+    const gestorUserSnap = gestor ? await docRef('users', gestor.userId).get() : null;
+    const gestorUser = gestorUserSnap ? snapData<any>(gestorUserSnap as any) : null;
+
+    const autorSnap = denuncia.autorId ? await docRef('users', denuncia.autorId).get() : null;
+    const autor = autorSnap ? snapData<any>(autorSnap as any) : null;
+
     // Ocultar autor em denúncias anônimas
     res.json({
       ...denuncia,
-      autor: denuncia.anonima ? null : denuncia.autor
+      gestor: gestor ? { ...gestor, user: gestorUser ? { nome: gestorUser.nome } : null } : null,
+      autor: denuncia.anonima ? null : autor ? { nome: autor.nome } : null
     });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao obter denúncia' });

@@ -1,13 +1,14 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { PrismaClient, Role } from '@prisma/client';
+import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import { loginLimiter } from '../middleware/rateLimit.middleware';
 import { authenticateToken, AuthRequest } from '../middleware/auth.middleware';
+import { Role } from '../models';
+import { col, docRef, normalizeFirestoreData, snapData } from '../firestoreRepo';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 const registerSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -26,38 +27,54 @@ router.post('/register', async (req: Request, res: Response) => {
   try {
     const data = registerSchema.parse(req.body);
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email: data.email }
-    });
-
-    if (existingUser) {
+    const existingSnap = await col('users').where('email', '==', data.email).limit(1).get();
+    if (!existingSnap.empty) {
       return res.status(400).json({ error: 'Email já cadastrado' });
     }
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
-    const user = await prisma.user.create({
-      data: {
-        email: data.email,
-        password: hashedPassword,
-        nome: data.nome,
-        role: data.role || Role.COLABORADOR
-      },
-      select: {
-        id: true,
-        email: true,
-        nome: true,
-        role: true
-      }
-    });
+    const now = new Date();
+    const userId = uuidv4();
+    const role = data.role || Role.COLABORADOR;
+    const userData = {
+      id: userId,
+      email: data.email,
+      password: hashedPassword,
+      nome: data.nome,
+      role,
+      avatar: null,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    await docRef('users', userId).set(userData);
+
+    const user = {
+      id: userId,
+      email: data.email,
+      nome: data.nome,
+      role
+    };
 
     // Se for gestor, criar perfil automaticamente
     if (user.role === Role.GESTOR) {
-      await prisma.gestor.create({
-        data: {
-          userId: user.id,
-          cargo: 'Gestor'
-        }
+      const gestorId = uuidv4();
+      await docRef('gestores', gestorId).set({
+        id: gestorId,
+        userId: userId,
+        cargo: 'Gestor',
+        departamento: null,
+        foto: null,
+        bio: null,
+        slackUserId: null,
+        mediaAvaliacao: 0,
+        totalAvaliacoes: 0,
+        elogiosCount: 0,
+        sugestoesCount: 0,
+        criticasCount: 0,
+        createdAt: now,
+        updatedAt: now
       });
     }
 
@@ -82,12 +99,9 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
   try {
     const data = loginSchema.parse(req.body);
 
-    const user = await prisma.user.findUnique({
-      where: { email: data.email },
-      include: {
-        gestor: true
-      }
-    });
+    const userQuery = await col('users').where('email', '==', data.email).limit(1).get();
+    const userSnap = userQuery.docs[0];
+    const user = userSnap ? snapData<any>(userSnap as any) : null;
 
     if (!user) {
       return res.status(401).json({ error: 'Credenciais inválidas' });
@@ -105,6 +119,9 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
       { expiresIn: '7d' }
     );
 
+    const gestorQuery = await col('gestores').where('userId', '==', user.id).limit(1).get();
+    const gestor = gestorQuery.empty ? null : normalizeFirestoreData(gestorQuery.docs[0].data());
+
     res.json({
       user: {
         id: user.id,
@@ -112,7 +129,7 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
         nome: user.nome,
         role: user.role,
         avatar: user.avatar,
-        gestor: user.gestor
+        gestor
       },
       token
     });
@@ -128,19 +145,23 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
 // Verificar token / obter usuário atual
 router.get('/me', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user!.id },
-      select: {
-        id: true,
-        email: true,
-        nome: true,
-        role: true,
-        avatar: true,
-        gestor: true
-      }
-    });
+    const userSnap = await docRef('users', req.user!.id).get();
+    const user = snapData<any>(userSnap as any);
+    if (!user) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
 
-    res.json(user);
+    const gestorQuery = await col('gestores').where('userId', '==', user.id).limit(1).get();
+    const gestor = gestorQuery.empty ? null : normalizeFirestoreData(gestorQuery.docs[0].data());
+
+    res.json({
+      id: user.id,
+      email: user.email,
+      nome: user.nome,
+      role: user.role,
+      avatar: user.avatar,
+      gestor
+    });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao obter usuário' });
   }

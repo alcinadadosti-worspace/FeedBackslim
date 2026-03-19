@@ -1,10 +1,11 @@
 import { Router, Response } from 'express';
-import { PrismaClient, Role } from '@prisma/client';
+import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import { authenticateToken, AuthRequest, requireGestorOrAdmin } from '../middleware/auth.middleware';
+import { Role } from '../models';
+import { col, docRef, getManyByIds, normalizeFirestoreData, snapData } from '../firestoreRepo';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 const updateGestorSchema = z.object({
   cargo: z.string().min(2).optional(),
@@ -25,26 +26,34 @@ const createGestorSchema = z.object({
 // Listar todos os gestores (público - sem autenticação)
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {
-    const gestores = await prisma.gestor.findMany({
-      include: {
-        user: {
-          select: {
-            id: true,
-            nome: true,
-            email: true
-          }
-        },
-        badges: true,
-        _count: {
-          select: {
-            avaliacoes: true
-          }
-        }
-      },
-      orderBy: { mediaAvaliacao: 'desc' }
+    const gestoresSnap = await col('gestores').orderBy('mediaAvaliacao', 'desc').get();
+    const gestores = gestoresSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
+
+    const userIds = gestores.map((g: any) => g.userId);
+    const usersById = await getManyByIds<any>('users', userIds);
+
+    const badgesSnap = await col('badges').get();
+    const badgesByGestorId = badgesSnap.docs.reduce<Record<string, any[]>>((acc: Record<string, any[]>, d: any) => {
+      const b: any = normalizeFirestoreData(d.data());
+      const gestorId = b.gestorId;
+      if (!acc[gestorId]) acc[gestorId] = [];
+      acc[gestorId].push({ id: d.id, ...b });
+      return acc;
+    }, {});
+
+    const response = gestores.map((g: any) => {
+      const user = usersById[g.userId];
+      return {
+        ...g,
+        user: user
+          ? { id: user.id, nome: (user as any).nome, email: (user as any).email }
+          : null,
+        badges: badgesByGestorId[g.id] || [],
+        _count: { avaliacoes: g.totalAvaliacoes ?? 0 }
+      };
     });
 
-    res.json(gestores);
+    res.json(response);
   } catch (error) {
     res.status(500).json({ error: 'Erro ao listar gestores' });
   }
@@ -53,26 +62,36 @@ router.get('/', async (req: AuthRequest, res: Response) => {
 // Ranking de gestores (público - sem autenticação)
 router.get('/ranking', async (req: AuthRequest, res: Response) => {
   try {
-    const gestores = await prisma.gestor.findMany({
-      where: {
-        totalAvaliacoes: { gte: 1 }
-      },
-      include: {
-        user: {
-          select: {
-            nome: true
-          }
-        },
-        badges: true
-      },
-      orderBy: [
-        { mediaAvaliacao: 'desc' },
-        { totalAvaliacoes: 'desc' }
-      ],
-      take: 10
+    const gestoresSnap = await col('gestores').where('totalAvaliacoes', '>=', 1).get();
+    const gestores = gestoresSnap.docs
+      .map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }))
+      .sort((a: any, b: any) => {
+        const mediaDiff = (b.mediaAvaliacao ?? 0) - (a.mediaAvaliacao ?? 0);
+        if (mediaDiff !== 0) return mediaDiff;
+        return (b.totalAvaliacoes ?? 0) - (a.totalAvaliacoes ?? 0);
+      })
+      .slice(0, 10);
+
+    const usersById = await getManyByIds<any>('users', gestores.map((g: any) => g.userId));
+    const badgesSnap = await col('badges').get();
+    const badgesByGestorId = badgesSnap.docs.reduce<Record<string, any[]>>((acc: Record<string, any[]>, d: any) => {
+      const b: any = normalizeFirestoreData(d.data());
+      const gestorId = b.gestorId;
+      if (!acc[gestorId]) acc[gestorId] = [];
+      acc[gestorId].push({ id: d.id, ...b });
+      return acc;
+    }, {});
+
+    const response = gestores.map((g: any) => {
+      const user = usersById[g.userId];
+      return {
+        ...g,
+        user: user ? { nome: (user as any).nome } : null,
+        badges: badgesByGestorId[g.id] || []
+      };
     });
 
-    res.json(gestores);
+    res.json(response);
   } catch (error) {
     res.status(500).json({ error: 'Erro ao obter ranking' });
   }
@@ -81,36 +100,40 @@ router.get('/ranking', async (req: AuthRequest, res: Response) => {
 // Obter gestor por ID (público - sem autenticação)
 router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
-    const gestor = await prisma.gestor.findUnique({
-      where: { id: req.params.id },
-      include: {
-        user: {
-          select: {
-            id: true,
-            nome: true,
-            email: true
-          }
-        },
-        avaliacoes: {
-          include: {
-            autor: {
-              select: {
-                nome: true
-              }
-            }
-          },
-          orderBy: { createdAt: 'desc' },
-          take: 20
-        },
-        badges: true
-      }
-    });
+    const gestorSnap = await docRef('gestores', req.params.id).get();
+    const gestor = snapData<any>(gestorSnap as any);
 
     if (!gestor) {
       return res.status(404).json({ error: 'Gestor não encontrado' });
     }
 
-    res.json(gestor);
+    const userSnap = await docRef('users', gestor.userId).get();
+    const user = snapData<any>(userSnap as any);
+
+    const badgesSnap = await col('badges').where('gestorId', '==', gestor.id).get();
+    const badges = badgesSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
+
+    const avaliacoesSnap = await col('avaliacoes')
+      .where('gestorId', '==', gestor.id)
+      .orderBy('createdAt', 'desc')
+      .limit(20)
+      .get();
+    const avaliacoes = avaliacoesSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
+
+    const autorIds = avaliacoes.map((a: any) => a.autorId).filter(Boolean);
+    const autoresById = await getManyByIds<any>('users', autorIds);
+
+    const avaliacoesComAutor = avaliacoes.map((a: any) => ({
+      ...a,
+      autor: a.autorId ? { nome: (autoresById[a.autorId] as any)?.nome } : null
+    }));
+
+    res.json({
+      ...gestor,
+      user: user ? { id: user.id, nome: user.nome, email: user.email } : null,
+      avaliacoes: avaliacoesComAutor,
+      badges
+    });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao obter gestor' });
   }
@@ -123,30 +146,46 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Apenas gestores podem criar perfil de gestor' });
     }
 
-    const existingGestor = await prisma.gestor.findUnique({
-      where: { userId: req.user!.id }
-    });
+    const existingGestor = await col('gestores').where('userId', '==', req.user!.id).limit(1).get();
 
-    if (existingGestor) {
+    if (!existingGestor.empty) {
       return res.status(400).json({ error: 'Você já possui um perfil de gestor' });
     }
 
     const data = createGestorSchema.parse(req.body);
 
-    const gestor = await prisma.gestor.create({
-      data: {
-        userId: req.user!.id,
-        ...data
-      },
-      include: {
-        user: {
-          select: {
-            nome: true,
-            email: true
-          }
-        }
-      }
+    const now = new Date();
+    const gestorId = uuidv4();
+    await docRef('gestores', gestorId).set({
+      id: gestorId,
+      userId: req.user!.id,
+      cargo: data.cargo,
+      departamento: data.departamento ?? null,
+      bio: data.bio ?? null,
+      foto: data.foto ?? null,
+      slackUserId: data.slackUserId ?? null,
+      mediaAvaliacao: 0,
+      totalAvaliacoes: 0,
+      elogiosCount: 0,
+      sugestoesCount: 0,
+      criticasCount: 0,
+      createdAt: now,
+      updatedAt: now
     });
+
+    const userSnap = await docRef('users', req.user!.id).get();
+    const user = snapData<any>(userSnap as any);
+
+    const gestor = {
+      id: gestorId,
+      userId: req.user!.id,
+      ...data,
+      mediaAvaliacao: 0,
+      totalAvaliacoes: 0,
+      createdAt: now,
+      updatedAt: now,
+      user: user ? { nome: user.nome, email: user.email } : null
+    };
 
     res.status(201).json(gestor);
   } catch (error) {
@@ -160,9 +199,8 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response) => {
 // Atualizar perfil de gestor
 router.put('/:id', authenticateToken, requireGestorOrAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const gestor = await prisma.gestor.findUnique({
-      where: { id: req.params.id }
-    });
+    const gestorSnap = await docRef('gestores', req.params.id).get();
+    const gestor = snapData<any>(gestorSnap as any);
 
     if (!gestor) {
       return res.status(404).json({ error: 'Gestor não encontrado' });
@@ -175,21 +213,32 @@ router.put('/:id', authenticateToken, requireGestorOrAdmin, async (req: AuthRequ
 
     const data = updateGestorSchema.parse(req.body);
 
-    const updated = await prisma.gestor.update({
-      where: { id: req.params.id },
-      data,
-      include: {
-        user: {
-          select: {
-            nome: true,
-            email: true
-          }
-        },
-        badges: true
-      }
-    });
+    const now = new Date();
+    await docRef('gestores', req.params.id).set(
+      {
+        ...data,
+        updatedAt: now
+      },
+      { merge: true }
+    );
 
-    res.json(updated);
+    const updatedSnap = await docRef('gestores', req.params.id).get();
+    const updated = snapData<any>(updatedSnap as any);
+    if (!updated) {
+      return res.status(404).json({ error: 'Gestor não encontrado' });
+    }
+
+    const userSnap = await docRef('users', updated.userId).get();
+    const user = snapData<any>(userSnap as any);
+
+    const badgesSnap = await col('badges').where('gestorId', '==', updated.id).get();
+    const badges = badgesSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
+
+    res.json({
+      ...updated,
+      user: user ? { nome: user.nome, email: user.email } : null,
+      badges
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors[0].message });
@@ -201,14 +250,8 @@ router.put('/:id', authenticateToken, requireGestorOrAdmin, async (req: AuthRequ
 // Estatísticas do gestor (privado para o gestor)
 router.get('/:id/stats', authenticateToken, requireGestorOrAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const gestor = await prisma.gestor.findUnique({
-      where: { id: req.params.id },
-      include: {
-        avaliacoes: {
-          orderBy: { createdAt: 'asc' }
-        }
-      }
-    });
+    const gestorSnap = await docRef('gestores', req.params.id).get();
+    const gestor = snapData<any>(gestorSnap as any);
 
     if (!gestor) {
       return res.status(404).json({ error: 'Gestor não encontrado' });
@@ -219,9 +262,14 @@ router.get('/:id/stats', authenticateToken, requireGestorOrAdmin, async (req: Au
       return res.status(403).json({ error: 'Acesso não autorizado' });
     }
 
-    // Calcular evolução mensal
-    const evolucaoMensal = gestor.avaliacoes.reduce((acc, av) => {
-      const mes = av.createdAt.toISOString().slice(0, 7);
+    const avaliacoesSnap = await col('avaliacoes')
+      .where('gestorId', '==', gestor.id)
+      .orderBy('createdAt', 'asc')
+      .get();
+    const avaliacoes = avaliacoesSnap.docs.map((d: any) => normalizeFirestoreData(d.data()) as any);
+
+    const evolucaoMensal = avaliacoes.reduce((acc: any, av: any) => {
+      const mes = (av.createdAt as Date).toISOString().slice(0, 7);
       if (!acc[mes]) {
         acc[mes] = { total: 0, soma: 0 };
       }
@@ -230,7 +278,7 @@ router.get('/:id/stats', authenticateToken, requireGestorOrAdmin, async (req: Au
       return acc;
     }, {} as Record<string, { total: number; soma: number }>);
 
-    const evolucao = Object.entries(evolucaoMensal).map(([mes, data]) => ({
+    const evolucao = (Object.entries(evolucaoMensal) as Array<[string, { total: number; soma: number }]>).map(([mes, data]) => ({
       mes,
       media: data.soma / data.total,
       total: data.total
@@ -238,14 +286,14 @@ router.get('/:id/stats', authenticateToken, requireGestorOrAdmin, async (req: Au
 
     // Contagem por tipo de feedback
     const feedbackStats = {
-      elogios: gestor.avaliacoes.filter(a => a.elogio).length,
-      sugestoes: gestor.avaliacoes.filter(a => a.sugestao).length,
-      criticas: gestor.avaliacoes.filter(a => a.critica).length
+      elogios: avaliacoes.filter((a: any) => a.elogio).length,
+      sugestoes: avaliacoes.filter((a: any) => a.sugestao).length,
+      criticas: avaliacoes.filter((a: any) => a.critica).length
     };
 
     res.json({
-      mediaGeral: gestor.mediaAvaliacao,
-      totalAvaliacoes: gestor.totalAvaliacoes,
+      mediaGeral: gestor.mediaAvaliacao ?? 0,
+      totalAvaliacoes: gestor.totalAvaliacoes ?? 0,
       evolucao,
       feedbackStats
     });

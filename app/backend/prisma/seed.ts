@@ -1,34 +1,60 @@
-import { PrismaClient, Role, TipoDenuncia, BadgeType } from '@prisma/client';
+import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
+import { v4 as uuidv4 } from 'uuid';
+import { firestore } from '../src/firebase';
+import { BadgeType, Role, StatusDenuncia, TipoDenuncia } from '../src/models';
 
-const prisma = new PrismaClient();
+dotenv.config();
+
+async function clearCollection(name: string) {
+  const collectionRef = firestore.collection(name);
+  const snap = await collectionRef.get();
+  if (snap.empty) return;
+
+  let batch = firestore.batch();
+  let count = 0;
+
+  for (const doc of snap.docs) {
+    batch.delete(doc.ref);
+    count++;
+    if (count === 450) {
+      await batch.commit();
+      batch = firestore.batch();
+      count = 0;
+    }
+  }
+
+  if (count > 0) {
+    await batch.commit();
+  }
+}
 
 async function main() {
-  console.log('🌱 Iniciando seed do banco de dados...');
+  console.log('🌱 Iniciando seed do Firestore...');
 
-  // Limpar dados existentes
-  await prisma.badge.deleteMany();
-  await prisma.avaliacaoLog.deleteMany();
-  await prisma.avaliacao.deleteMany();
-  await prisma.denuncia.deleteMany();
-  await prisma.gestor.deleteMany();
-  await prisma.user.deleteMany();
+  await clearCollection('badges');
+  await clearCollection('avaliacoes');
+  await clearCollection('denuncias');
+  await clearCollection('gestores');
+  await clearCollection('users');
 
   const hashedPassword = await bcrypt.hash('123456', 10);
+  const now = new Date();
 
-  // Criar usuário Admin/RH
-  const adminUser = await prisma.user.create({
-    data: {
-      email: 'admin@pulse360.com',
-      password: hashedPassword,
-      nome: 'Administrador RH',
-      role: Role.RH_ADMIN
-    }
+  const adminUserId = uuidv4();
+  await firestore.collection('users').doc(adminUserId).set({
+    id: adminUserId,
+    email: 'admin@pulse360.com',
+    password: hashedPassword,
+    nome: 'Administrador RH',
+    role: Role.RH_ADMIN,
+    avatar: null,
+    createdAt: now,
+    updatedAt: now
   });
 
-  console.log('✅ Usuário Admin criado:', adminUser.email);
+  console.log('✅ Usuário Admin criado: admin@pulse360.com');
 
-  // Criar Gestores
   const gestores = [
     {
       email: 'carlos.silva@pulse360.com',
@@ -67,32 +93,43 @@ async function main() {
     }
   ];
 
-  const gestoresCreated = [];
+  const gestoresCreated: Array<{ userId: string; gestorId: string; nome: string }> = [];
 
-  for (const gestor of gestores) {
-    const user = await prisma.user.create({
-      data: {
-        email: gestor.email,
-        password: hashedPassword,
-        nome: gestor.nome,
-        role: Role.GESTOR
-      }
+  for (const g of gestores) {
+    const userId = uuidv4();
+    await firestore.collection('users').doc(userId).set({
+      id: userId,
+      email: g.email,
+      password: hashedPassword,
+      nome: g.nome,
+      role: Role.GESTOR,
+      avatar: null,
+      createdAt: now,
+      updatedAt: now
     });
 
-    const gestorProfile = await prisma.gestor.create({
-      data: {
-        userId: user.id,
-        cargo: gestor.cargo,
-        departamento: gestor.departamento,
-        bio: gestor.bio
-      }
+    const gestorId = uuidv4();
+    await firestore.collection('gestores').doc(gestorId).set({
+      id: gestorId,
+      userId,
+      cargo: g.cargo,
+      departamento: g.departamento,
+      bio: g.bio,
+      foto: null,
+      slackUserId: null,
+      mediaAvaliacao: 0,
+      totalAvaliacoes: 0,
+      elogiosCount: 0,
+      sugestoesCount: 0,
+      criticasCount: 0,
+      createdAt: now,
+      updatedAt: now
     });
 
-    gestoresCreated.push({ user, gestor: gestorProfile });
-    console.log('✅ Gestor criado:', gestor.nome);
+    gestoresCreated.push({ userId, gestorId, nome: g.nome });
+    console.log('✅ Gestor criado:', g.nome);
   }
 
-  // Criar Colaboradores
   const colaboradores = [
     { email: 'joao.pereira@pulse360.com', nome: 'João Pereira' },
     { email: 'maria.souza@pulse360.com', nome: 'Maria Souza' },
@@ -104,23 +141,24 @@ async function main() {
     { email: 'amanda.lima@pulse360.com', nome: 'Amanda Lima' }
   ];
 
-  const colaboradoresCreated = [];
+  const colaboradoresCreated: Array<{ userId: string; nome: string }> = [];
 
-  for (const colab of colaboradores) {
-    const user = await prisma.user.create({
-      data: {
-        email: colab.email,
-        password: hashedPassword,
-        nome: colab.nome,
-        role: Role.COLABORADOR
-      }
+  for (const c of colaboradores) {
+    const userId = uuidv4();
+    await firestore.collection('users').doc(userId).set({
+      id: userId,
+      email: c.email,
+      password: hashedPassword,
+      nome: c.nome,
+      role: Role.COLABORADOR,
+      avatar: null,
+      createdAt: now,
+      updatedAt: now
     });
-
-    colaboradoresCreated.push(user);
-    console.log('✅ Colaborador criado:', colab.nome);
+    colaboradoresCreated.push({ userId, nome: c.nome });
+    console.log('✅ Colaborador criado:', c.nome);
   }
 
-  // Criar Avaliações
   const elogios = [
     'Excelente líder! Sempre disponível para ajudar a equipe.',
     'Muito comunicativo e transparente com os objetivos.',
@@ -145,66 +183,62 @@ async function main() {
 
   console.log('\n📝 Criando avaliações...');
 
-  for (const gestorData of gestoresCreated) {
-    // Cada gestor recebe avaliações de vários colaboradores
-    const numAvaliacoes = Math.floor(Math.random() * 8) + 5; // 5-12 avaliações
+  for (const gestor of gestoresCreated) {
+    const numAvaliacoes = Math.floor(Math.random() * 8) + 5;
+
+    let somaNotas = 0;
+    let total = 0;
+    let elogiosCount = 0;
+    let sugestoesCount = 0;
+    let criticasCount = 0;
 
     for (let i = 0; i < numAvaliacoes; i++) {
       const colaborador = colaboradoresCreated[Math.floor(Math.random() * colaboradoresCreated.length)];
-      const nota = Math.floor(Math.random() * 4) + 7; // Notas entre 7-10
+      const nota = Math.floor(Math.random() * 4) + 7;
 
       const hasElogio = Math.random() > 0.3;
       const hasSugestao = Math.random() > 0.6;
       const hasCritica = Math.random() > 0.8;
 
-      await prisma.avaliacao.create({
-        data: {
-          gestorId: gestorData.gestor.id,
-          autorId: colaborador.id,
-          nota,
-          elogio: hasElogio ? elogios[Math.floor(Math.random() * elogios.length)] : null,
-          sugestao: hasSugestao ? sugestoes[Math.floor(Math.random() * sugestoes.length)] : null,
-          critica: hasCritica ? criticas[Math.floor(Math.random() * criticas.length)] : null,
-          createdAt: new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000) // últimos 90 dias
-        }
+      const createdAt = new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000);
+      const avaliacaoId = uuidv4();
+      await firestore.collection('avaliacoes').doc(avaliacaoId).set({
+        id: avaliacaoId,
+        gestorId: gestor.gestorId,
+        autorId: colaborador.userId,
+        nota,
+        elogio: hasElogio ? elogios[Math.floor(Math.random() * elogios.length)] : null,
+        sugestao: hasSugestao ? sugestoes[Math.floor(Math.random() * sugestoes.length)] : null,
+        critica: hasCritica ? criticas[Math.floor(Math.random() * criticas.length)] : null,
+        createdAt
       });
 
-      await prisma.avaliacaoLog.create({
-        data: {
-          autorId: colaborador.id,
-          gestorId: gestorData.gestor.id
-        }
-      });
+      somaNotas += nota;
+      total++;
+      if (hasElogio) elogiosCount++;
+      if (hasSugestao) sugestoesCount++;
+      if (hasCritica) criticasCount++;
     }
 
-    // Atualizar média do gestor
-    const avaliacoes = await prisma.avaliacao.findMany({
-      where: { gestorId: gestorData.gestor.id },
-      select: { nota: true }
-    });
-
-    const media = avaliacoes.reduce((acc, a) => acc + a.nota, 0) / avaliacoes.length;
-
-    await prisma.gestor.update({
-      where: { id: gestorData.gestor.id },
-      data: {
+    const media = total === 0 ? 0 : somaNotas / total;
+    await firestore.collection('gestores').doc(gestor.gestorId).set(
+      {
         mediaAvaliacao: Number(media.toFixed(1)),
-        totalAvaliacoes: avaliacoes.length
-      }
-    });
+        totalAvaliacoes: total,
+        elogiosCount,
+        sugestoesCount,
+        criticasCount,
+        updatedAt: new Date()
+      },
+      { merge: true }
+    );
 
-    console.log(`  ✅ ${gestorData.user.nome}: ${avaliacoes.length} avaliações, média ${media.toFixed(1)}`);
+    console.log(`  ✅ ${gestor.nome}: ${total} avaliações, média ${media.toFixed(1)}`);
   }
 
-  // Criar algumas denúncias de exemplo
   console.log('\n🚨 Criando denúncias de exemplo...');
 
-  const tiposDenuncia = [
-    TipoDenuncia.COMPORTAMENTO_INADEQUADO,
-    TipoDenuncia.ASSEDIO_MORAL,
-    TipoDenuncia.ABUSO_AUTORIDADE
-  ];
-
+  const tiposDenuncia = [TipoDenuncia.COMPORTAMENTO_INADEQUADO, TipoDenuncia.ASSEDIO_MORAL, TipoDenuncia.ABUSO_AUTORIDADE];
   const descricoesDenuncia = [
     'Comportamento agressivo em reunião de equipe.',
     'Comentários inapropriados sobre aparência de colaboradores.',
@@ -215,49 +249,54 @@ async function main() {
   for (let i = 0; i < 3; i++) {
     const gestor = gestoresCreated[Math.floor(Math.random() * gestoresCreated.length)];
     const colaborador = colaboradoresCreated[Math.floor(Math.random() * colaboradoresCreated.length)];
+    const anonima = Math.random() > 0.5;
+    const denunciaId = uuidv4();
+    const createdAt = new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000);
 
-    await prisma.denuncia.create({
-      data: {
-        gestorId: gestor.gestor.id,
-        autorId: Math.random() > 0.5 ? colaborador.id : null, // 50% anônimas
-        tipo: tiposDenuncia[Math.floor(Math.random() * tiposDenuncia.length)],
-        descricao: descricoesDenuncia[Math.floor(Math.random() * descricoesDenuncia.length)],
-        anonima: Math.random() > 0.5,
-        createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000)
-      }
+    await firestore.collection('denuncias').doc(denunciaId).set({
+      id: denunciaId,
+      gestorId: gestor.gestorId,
+      autorId: anonima ? null : colaborador.userId,
+      tipo: tiposDenuncia[Math.floor(Math.random() * tiposDenuncia.length)],
+      descricao: descricoesDenuncia[Math.floor(Math.random() * descricoesDenuncia.length)],
+      anonima,
+      status: StatusDenuncia.PENDENTE,
+      createdAt,
+      updatedAt: createdAt
     });
   }
 
   console.log('✅ Denúncias de exemplo criadas');
 
-  // Criar badges para gestores com boas avaliações
   console.log('\n🏆 Atribuindo badges...');
 
-  for (const gestorData of gestoresCreated) {
-    const gestor = await prisma.gestor.findUnique({
-      where: { id: gestorData.gestor.id }
-    });
+  for (const gestor of gestoresCreated) {
+    const gestorSnap = await firestore.collection('gestores').doc(gestor.gestorId).get();
+    const g: any = gestorSnap.data();
+    if (!g) continue;
 
-    if (gestor && gestor.mediaAvaliacao >= 8.5) {
-      await prisma.badge.create({
-        data: {
-          gestorId: gestor.id,
-          tipo: BadgeType.LIDER_INSPIRADOR,
-          descricao: 'Reconhecido por excelente liderança'
-        }
+    if (Number(g.mediaAvaliacao || 0) >= 8.5) {
+      const badgeId = uuidv4();
+      await firestore.collection('badges').doc(badgeId).set({
+        id: badgeId,
+        gestorId: gestor.gestorId,
+        tipo: BadgeType.LIDER_INSPIRADOR,
+        descricao: 'Reconhecido por excelente liderança',
+        dataConquista: new Date()
       });
-      console.log(`  🏆 ${gestorData.user.nome}: Badge Líder Inspirador`);
+      console.log(`  🏆 ${gestor.nome}: Badge Líder Inspirador`);
     }
 
-    if (gestor && gestor.totalAvaliacoes >= 10) {
-      await prisma.badge.create({
-        data: {
-          gestorId: gestor.id,
-          tipo: BadgeType.COLABORATIVO,
-          descricao: 'Muito engajamento da equipe'
-        }
+    if (Number(g.totalAvaliacoes || 0) >= 10) {
+      const badgeId = uuidv4();
+      await firestore.collection('badges').doc(badgeId).set({
+        id: badgeId,
+        gestorId: gestor.gestorId,
+        tipo: BadgeType.COLABORATIVO,
+        descricao: 'Muito engajamento da equipe',
+        dataConquista: new Date()
       });
-      console.log(`  🤝 ${gestorData.user.nome}: Badge Colaborativo`);
+      console.log(`  🤝 ${gestor.nome}: Badge Colaborativo`);
     }
   }
 
@@ -268,11 +307,7 @@ async function main() {
   console.log('   Colaborador: joao.pereira@pulse360.com / 123456');
 }
 
-main()
-  .catch((e) => {
-    console.error('Erro no seed:', e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+main().catch((e) => {
+  console.error('Erro no seed:', e);
+  process.exit(1);
+});

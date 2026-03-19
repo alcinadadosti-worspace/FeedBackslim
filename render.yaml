@@ -5,11 +5,15 @@ services:
     runtime: node
     region: oregon
     buildCommand: npm install && npm run build
-    startCommand: npm run db:push && npm start
+    startCommand: npm start
     envVars:
-      - key: DATABASE_URL
+      - key: FIREBASE_PROJECT_ID
         sync: false
-      - key: DIRECT_URL
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
         sync: false
       - key: JWT_SECRET
         generateValue: true

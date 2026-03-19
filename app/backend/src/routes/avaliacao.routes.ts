@@ -1,12 +1,15 @@
 import { Router, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { v4 as uuidv4 } from 'uuid';
+import type { Query } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { authenticateToken, AuthRequest } from '../middleware/auth.middleware';
 import { avaliacaoLimiter } from '../middleware/rateLimit.middleware';
 import { sendEvaluationNotification } from '../services/slack.service';
+import { col, docRef, getManyByIds, normalizeFirestoreData, snapData } from '../firestoreRepo';
+import { BadgeType } from '../models';
+import { firestore } from '../firebase';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 const createAvaliacaoSchema = z.object({
   gestorId: z.string().uuid('ID do gestor inválido'),
@@ -21,34 +24,48 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const { gestorId, page = '1', limit = '20' } = req.query;
 
-    const where: any = {};
+    const take = Number(limit);
+    const skip = (Number(page) - 1) * take;
+
+    let baseQuery: Query = col('avaliacoes');
     if (gestorId) {
-      where.gestorId = gestorId;
+      baseQuery = baseQuery.where('gestorId', '==', gestorId);
     }
 
-    const avaliacoes = await prisma.avaliacao.findMany({
-      where,
-      include: {
-        gestor: {
-          include: {
-            user: {
-              select: { nome: true }
+    const pagedSnap = await baseQuery
+      .orderBy('createdAt', 'desc')
+      .offset(skip)
+      .limit(take)
+      .get();
+    const avaliacoes = pagedSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
+
+    const totalSnap = await baseQuery.get();
+    const total = totalSnap.size;
+
+    const gestorIds = avaliacoes.map((a: any) => a.gestorId).filter(Boolean);
+    const autorIds = avaliacoes.map((a: any) => a.autorId).filter(Boolean);
+    const gestoresById = await getManyByIds<any>('gestores', gestorIds);
+    const gestorUserIds = Object.values(gestoresById).map((g: any) => (g as any).userId).filter(Boolean);
+    const usersById = await getManyByIds<any>('users', [...autorIds, ...gestorUserIds]);
+
+    const data = avaliacoes.map((a: any) => {
+      const gestor = gestoresById[a.gestorId];
+      const gestorUser = gestor ? usersById[(gestor as any).userId] : undefined;
+      const autor = a.autorId ? usersById[a.autorId] : undefined;
+      return {
+        ...a,
+        gestor: gestor
+          ? {
+              ...(gestor as any),
+              user: gestorUser ? { nome: (gestorUser as any).nome } : null
             }
-          }
-        },
-        autor: {
-          select: { nome: true }
-        }
-      },
-      orderBy: { createdAt: 'desc' },
-      skip: (Number(page) - 1) * Number(limit),
-      take: Number(limit)
+          : null,
+        autor: autor ? { nome: (autor as any).nome } : null
+      };
     });
 
-    const total = await prisma.avaliacao.count({ where });
-
     res.json({
-      data: avaliacoes,
+      data,
       pagination: {
         page: Number(page),
         limit: Number(limit),
@@ -67,63 +84,83 @@ router.post('/', avaliacaoLimiter, async (req: AuthRequest, res: Response) => {
     const data = createAvaliacaoSchema.parse(req.body);
 
     // Verificar se o gestor existe
-    const gestor = await prisma.gestor.findUnique({
-      where: { id: data.gestorId },
-      include: {
-        user: { select: { nome: true } }
-      }
-    });
+    const gestorSnap = await docRef('gestores', data.gestorId).get();
+    const gestor = snapData<any>(gestorSnap as any);
 
     if (!gestor) {
       return res.status(404).json({ error: 'Gestor não encontrado' });
     }
 
-    // Criar avaliação anônima (sem autorId)
-    const avaliacao = await prisma.avaliacao.create({
-      data: {
+    const avaliacaoId = uuidv4();
+    const now = new Date();
+
+    await firestore.runTransaction(async (tx) => {
+      const gestorRef = docRef('gestores', data.gestorId);
+      const gestorTxSnap = await tx.get(gestorRef);
+      if (!gestorTxSnap.exists) {
+        throw new Error('Gestor não encontrado');
+      }
+      const g: any = normalizeFirestoreData(gestorTxSnap.data() as any);
+
+      const totalAtual = Number(g.totalAvaliacoes || 0);
+      const mediaAtual = Number(g.mediaAvaliacao || 0);
+      const novoTotal = totalAtual + 1;
+      const novaMedia = novoTotal === 0 ? 0 : (mediaAtual * totalAtual + data.nota) / novoTotal;
+
+      const elogiosCountAtual = Number(g.elogiosCount || 0);
+      const sugestoesCountAtual = Number(g.sugestoesCount || 0);
+      const criticasCountAtual = Number(g.criticasCount || 0);
+
+      tx.set(docRef('avaliacoes', avaliacaoId), {
+        id: avaliacaoId,
         gestorId: data.gestorId,
+        autorId: null,
         nota: data.nota,
-        elogio: data.elogio,
-        sugestao: data.sugestao,
-        critica: data.critica
-      }
-    });
+        elogio: data.elogio ?? null,
+        sugestao: data.sugestao ?? null,
+        critica: data.critica ?? null,
+        createdAt: now
+      });
 
-    // Atualizar média do gestor
-    const avaliacoes = await prisma.avaliacao.findMany({
-      where: { gestorId: data.gestorId },
-      select: { nota: true }
-    });
-
-    const mediaAvaliacao = avaliacoes.reduce((acc, a) => acc + a.nota, 0) / avaliacoes.length;
-
-    await prisma.gestor.update({
-      where: { id: data.gestorId },
-      data: {
-        mediaAvaliacao,
-        totalAvaliacoes: avaliacoes.length
-      }
+      tx.update(gestorRef, {
+        mediaAvaliacao: Number(novaMedia.toFixed(2)),
+        totalAvaliacoes: novoTotal,
+        elogiosCount: elogiosCountAtual + (data.elogio ? 1 : 0),
+        sugestoesCount: sugestoesCountAtual + (data.sugestao ? 1 : 0),
+        criticasCount: criticasCountAtual + (data.critica ? 1 : 0),
+        updatedAt: now
+      });
     });
 
     // Verificar e atribuir badges
     await checkAndAssignBadges(data.gestorId);
 
     // Enviar notificação Slack
-    if (gestor.slackUserId) {
+    const gestorUserSnap = await docRef('users', gestor.userId).get();
+    const gestorUser = snapData<any>(gestorUserSnap as any);
+    if (gestor.slackUserId && gestorUser) {
       try {
         await sendEvaluationNotification({
           slackUserId: gestor.slackUserId,
-          gestorNome: gestor.user.nome,
+          gestorNome: gestorUser.nome,
           nota: data.nota,
           comentario: data.elogio || data.sugestao || data.critica || '',
-          avaliacaoId: avaliacao.id
+          avaliacaoId
         });
       } catch (slackError) {
         console.error('Erro ao enviar notificação Slack:', slackError);
       }
     }
 
-    res.status(201).json(avaliacao);
+    res.status(201).json({
+      id: avaliacaoId,
+      gestorId: data.gestorId,
+      nota: data.nota,
+      elogio: data.elogio,
+      sugestao: data.sugestao,
+      critica: data.critica,
+      createdAt: now
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors[0].message });
@@ -135,49 +172,51 @@ router.post('/', avaliacaoLimiter, async (req: AuthRequest, res: Response) => {
 
 // Função para verificar e atribuir badges
 async function checkAndAssignBadges(gestorId: string) {
-  const gestor = await prisma.gestor.findUnique({
-    where: { id: gestorId },
-    include: {
-      badges: true,
-      avaliacoes: true
-    }
-  });
-
+  const gestorSnap = await docRef('gestores', gestorId).get();
+  const gestor = snapData<any>(gestorSnap as any);
   if (!gestor) return;
 
-  const badges = gestor.badges.map(b => b.tipo);
+  const badgesSnap = await col('badges').where('gestorId', '==', gestorId).get();
+  const badges = badgesSnap.docs.map((d: any) => (normalizeFirestoreData(d.data()) as any).tipo);
 
   // Badge "Líder Inspirador" - média >= 9 com pelo menos 10 avaliações
-  if (gestor.mediaAvaliacao >= 9 && gestor.totalAvaliacoes >= 10 && !badges.includes('LIDER_INSPIRADOR')) {
-    await prisma.badge.create({
-      data: {
-        gestorId,
-        tipo: 'LIDER_INSPIRADOR',
-        descricao: 'Média de avaliação acima de 9 com 10+ avaliações'
-      }
+  if (Number(gestor.mediaAvaliacao || 0) >= 9 && Number(gestor.totalAvaliacoes || 0) >= 10 && !badges.includes(BadgeType.LIDER_INSPIRADOR)) {
+    const id = uuidv4();
+    await docRef('badges', id).set({
+      id,
+      gestorId,
+      tipo: BadgeType.LIDER_INSPIRADOR,
+      descricao: 'Média de avaliação acima de 9 com 10+ avaliações',
+      dataConquista: new Date()
     });
   }
 
   // Badge "Comunicador" - 20+ avaliações com elogios
-  const elogios = gestor.avaliacoes.filter(a => a.elogio).length;
-  if (elogios >= 20 && !badges.includes('COMUNICADOR')) {
-    await prisma.badge.create({
-      data: {
-        gestorId,
-        tipo: 'COMUNICADOR',
-        descricao: 'Recebeu 20+ elogios de comunicação'
-      }
+  let elogios = Number(gestor.elogiosCount || 0);
+  if (!Number.isFinite(elogios) || elogios === 0) {
+    const avaliacoesSnap = await col('avaliacoes').where('gestorId', '==', gestorId).get();
+    elogios = avaliacoesSnap.docs.map((d: any) => normalizeFirestoreData(d.data()) as any).filter((a: any) => a.elogio).length;
+  }
+  if (elogios >= 20 && !badges.includes(BadgeType.COMUNICADOR)) {
+    const id = uuidv4();
+    await docRef('badges', id).set({
+      id,
+      gestorId,
+      tipo: BadgeType.COMUNICADOR,
+      descricao: 'Recebeu 20+ elogios de comunicação',
+      dataConquista: new Date()
     });
   }
 
   // Badge "Colaborativo" - 50+ avaliações totais
-  if (gestor.totalAvaliacoes >= 50 && !badges.includes('COLABORATIVO')) {
-    await prisma.badge.create({
-      data: {
-        gestorId,
-        tipo: 'COLABORATIVO',
-        descricao: 'Recebeu 50+ avaliações da equipe'
-      }
+  if (Number(gestor.totalAvaliacoes || 0) >= 50 && !badges.includes(BadgeType.COLABORATIVO)) {
+    const id = uuidv4();
+    await docRef('badges', id).set({
+      id,
+      gestorId,
+      tipo: BadgeType.COLABORATIVO,
+      descricao: 'Recebeu 50+ avaliações da equipe',
+      dataConquista: new Date()
     });
   }
 }
@@ -185,25 +224,27 @@ async function checkAndAssignBadges(gestorId: string) {
 // Obter avaliação por ID
 router.get('/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const avaliacao = await prisma.avaliacao.findUnique({
-      where: { id: req.params.id },
-      include: {
-        gestor: {
-          include: {
-            user: { select: { nome: true } }
-          }
-        },
-        autor: {
-          select: { nome: true }
-        }
-      }
-    });
+    const avaliacaoSnap = await docRef('avaliacoes', req.params.id).get();
+    const avaliacao = snapData<any>(avaliacaoSnap as any);
 
     if (!avaliacao) {
       return res.status(404).json({ error: 'Avaliação não encontrada' });
     }
 
-    res.json(avaliacao);
+    const gestorSnap = await docRef('gestores', avaliacao.gestorId).get();
+    const gestor = snapData<any>(gestorSnap as any);
+
+    const gestorUserSnap = gestor ? await docRef('users', gestor.userId).get() : null;
+    const gestorUser = gestorUserSnap ? snapData<any>(gestorUserSnap as any) : null;
+
+    const autorSnap = avaliacao.autorId ? await docRef('users', avaliacao.autorId).get() : null;
+    const autor = autorSnap ? snapData<any>(autorSnap as any) : null;
+
+    res.json({
+      ...avaliacao,
+      gestor: gestor ? { ...gestor, user: gestorUser ? { nome: gestorUser.nome } : null } : null,
+      autor: autor ? { nome: autor.nome } : null
+    });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao obter avaliação' });
   }

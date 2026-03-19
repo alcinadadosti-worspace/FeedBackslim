@@ -6,12 +6,8 @@ FROM base AS deps
 WORKDIR /app
 
 COPY package*.json ./
-COPY prisma ./prisma/
 
 RUN npm ci
-
-# Generate Prisma Client
-RUN npx prisma generate
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -32,7 +28,6 @@ RUN adduser --system --uid 1001 expressjs
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package.json ./package.json
 
 # Create uploads directory
@@ -44,4 +39,4 @@ EXPOSE 3001
 
 ENV PORT 3001
 
-CMD ["sh", "-c", "npx prisma db push && node dist/index.js"]
+CMD ["node", "dist/index.js"]

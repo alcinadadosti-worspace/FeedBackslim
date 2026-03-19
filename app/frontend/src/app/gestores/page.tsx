@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Search } from 'lucide-react';
-import { PublicLayout } from '@/components/layout/PublicLayout';
+import { SmartLayout } from '@/components/layout/SmartLayout';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Avatar } from '@/components/ui/Avatar';
@@ -42,7 +42,7 @@ export default function GestoresPage() {
   });
 
   return (
-    <PublicLayout>
+    <SmartLayout>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
@@ -116,6 +116,6 @@ export default function GestoresPage() {
           </div>
         )}
       </div>
-    </PublicLayout>
+    </SmartLayout>
   );
 }
