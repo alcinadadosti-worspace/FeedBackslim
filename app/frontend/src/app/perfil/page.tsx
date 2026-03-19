@@ -14,6 +14,66 @@ import { useAuthStore } from '@/store/auth';
 import { gestoresAPI, uploadAPI } from '@/lib/api';
 import api from '@/lib/api';
 
+async function compressImageToTarget(file: File, maxBytes: number): Promise<File> {
+  const originalType = file.type || 'image/jpeg';
+  const targetType = originalType === 'image/png' ? 'image/png' : 'image/webp';
+
+  const bitmap = await createImageBitmap(file);
+  const maxSize = 256;
+  const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height));
+  const targetW = Math.max(1, Math.round(bitmap.width * scale));
+  const targetH = Math.max(1, Math.round(bitmap.height * scale));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = targetW;
+  canvas.height = targetH;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    throw new Error('Falha ao processar imagem');
+  }
+
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(bitmap, 0, 0, targetW, targetH);
+
+  const toBlob = (type: string, quality?: number) =>
+    new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (b) => {
+          if (!b) return reject(new Error('Falha ao processar imagem'));
+          resolve(b);
+        },
+        type,
+        quality
+      );
+    });
+
+  if (targetType === 'image/png') {
+    const blob = await toBlob('image/png');
+    if (blob.size > maxBytes) {
+      throw new Error('Imagem muito grande. Use uma foto menor ou em JPG/WebP.');
+    }
+    return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.png', { type: 'image/png' });
+  }
+
+  let quality = 0.82;
+  let blob = await toBlob('image/webp', quality);
+  while (blob.size > maxBytes && quality > 0.35) {
+    quality -= 0.12;
+    blob = await toBlob('image/webp', quality);
+  }
+
+  if (blob.size > maxBytes) {
+    const jpegBlob = await toBlob('image/jpeg', 0.72);
+    if (jpegBlob.size > maxBytes) {
+      throw new Error('Imagem muito grande. Tente uma foto menor.');
+    }
+    return new File([jpegBlob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+  }
+
+  return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.webp', { type: 'image/webp' });
+}
+
 export default function PerfilPage() {
   const { user, updateUser } = useAuthStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -39,7 +99,8 @@ export default function PerfilPage() {
 
     setUploading(true);
     try {
-      const response = await uploadAPI.upload(file);
+      const optimized = await compressImageToTarget(file, 250 * 1024);
+      const response = await uploadAPI.upload(optimized);
       const url = response.data.url;
 
       if (isGestor) {
