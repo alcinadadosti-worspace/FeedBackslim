@@ -22,8 +22,8 @@ const app = express();
 
 // Middlewares for API
 app.use('/api', cors());
-app.use('/api', express.json());
-app.use('/api', express.urlencoded({ extended: true }));
+app.use('/api', express.json({ limit: '2mb' }));
+app.use('/api', express.urlencoded({ extended: true, limit: '2mb' }));
 
 // Uploads
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

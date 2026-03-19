@@ -11,12 +11,11 @@ router.get('/colaborador', authenticateToken, async (req: AuthRequest, res: Resp
     const userId = req.user!.id;
 
     // Minhas avaliações recentes
-    const minhasSnap = await col('avaliacoes')
-      .where('autorId', '==', userId)
-      .orderBy('createdAt', 'desc')
-      .limit(5)
-      .get();
-    const minhasAvaliacoesRaw = minhasSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
+    const minhasSnap = await col('avaliacoes').where('autorId', '==', userId).get();
+    const minhasAvaliacoesRaw = minhasSnap.docs
+      .map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }))
+      .sort((a: any, b: any) => (b.createdAt as Date).getTime() - (a.createdAt as Date).getTime())
+      .slice(0, 5);
     const minhasGestorIds = minhasAvaliacoesRaw.map((a: any) => a.gestorId).filter(Boolean);
     const meusGestoresById = await getManyByIds<any>('gestores', minhasGestorIds);
     const meusGestorUserIds = Object.values(meusGestoresById).map((g: any) => (g as any).userId).filter(Boolean);
@@ -91,12 +90,12 @@ router.get('/gestor', authenticateToken, async (req: AuthRequest, res: Response)
     const badgesSnap = await col('badges').where('gestorId', '==', gestor.id).get();
     const badges = badgesSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
 
-    const recentesSnap = await col('avaliacoes')
-      .where('gestorId', '==', gestor.id)
-      .orderBy('createdAt', 'desc')
-      .limit(10)
-      .get();
-    const recentesRaw = recentesSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
+    const todasSnap = await col('avaliacoes').where('gestorId', '==', gestor.id).get();
+    const todasAvaliacoes = todasSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
+
+    const recentesRaw = [...todasAvaliacoes]
+      .sort((a: any, b: any) => (b.createdAt as Date).getTime() - (a.createdAt as Date).getTime())
+      .slice(0, 10);
 
     const autorIds = recentesRaw.map((a: any) => a.autorId).filter(Boolean);
     const autoresById = await getManyByIds<any>('users', autorIds);
@@ -106,9 +105,6 @@ router.get('/gestor', authenticateToken, async (req: AuthRequest, res: Response)
     }));
 
     // Calcular evolução mensal
-    const todasSnap = await col('avaliacoes').where('gestorId', '==', gestor.id).orderBy('createdAt', 'asc').get();
-    const todasAvaliacoes = todasSnap.docs.map((d: any) => normalizeFirestoreData(d.data()) as any);
-
     const evolucaoMensal = todasAvaliacoes.reduce((acc: any, av: any) => {
       const mes = (av.createdAt as Date).toISOString().slice(0, 7);
       if (!acc[mes]) {
@@ -187,10 +183,14 @@ router.get('/admin', authenticateToken, requireAdmin, async (req: AuthRequest, r
       (fromDate
         ? col('denuncias')
             .where('createdAt', '>=', fromDate)
+            .get()
+            .then((s: any) =>
+              s.docs.map((d: any) => normalizeFirestoreData(d.data()) as any).filter((d: any) => d.status === StatusDenuncia.PENDENTE).length
+            )
+        : col('denuncias')
             .where('status', '==', StatusDenuncia.PENDENTE)
             .get()
-            .then((s: any) => s.size)
-        : col('denuncias').where('status', '==', StatusDenuncia.PENDENTE).get().then((s: any) => s.size))
+            .then((s: any) => s.size))
     ]);
 
     // Top gestores

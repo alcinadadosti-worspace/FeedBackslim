@@ -1,6 +1,5 @@
 import { Router, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import type { Query } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { authenticateToken, AuthRequest, requireAdmin } from '../middleware/auth.middleware';
 import { denunciaLimiter } from '../middleware/rateLimit.middleware';
@@ -29,16 +28,17 @@ router.get('/', authenticateToken, requireAdmin, async (req: AuthRequest, res: R
     const take = Number(limit);
     const skip = (Number(page) - 1) * take;
 
-    let query: Query = col('denuncias');
-    if (gestorId) query = query.where('gestorId', '==', gestorId);
-    if (status) query = query.where('status', '==', status);
-    if (tipo) query = query.where('tipo', '==', tipo);
+    const snap = await col('denuncias').get();
+    const all = snap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
 
-    const pagedSnap = await query.orderBy('createdAt', 'desc').offset(skip).limit(take).get();
-    const denuncias = pagedSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
+    const filtered = all
+      .filter((d: any) => (gestorId ? d.gestorId === gestorId : true))
+      .filter((d: any) => (status ? d.status === status : true))
+      .filter((d: any) => (tipo ? d.tipo === tipo : true))
+      .sort((a: any, b: any) => (b.createdAt as Date).getTime() - (a.createdAt as Date).getTime());
 
-    const totalSnap = await query.get();
-    const total = totalSnap.size;
+    const total = filtered.length;
+    const denuncias = filtered.slice(skip, skip + take);
 
     const gestorIds = denuncias.map((d: any) => d.gestorId).filter(Boolean);
     const autorIds = denuncias.map((d: any) => d.autorId).filter(Boolean);

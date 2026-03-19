@@ -27,20 +27,25 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
     const take = Number(limit);
     const skip = (Number(page) - 1) * take;
 
-    let baseQuery: Query = col('avaliacoes');
+    let avaliacoes: any[] = [];
+    let total = 0;
+
     if (gestorId) {
-      baseQuery = baseQuery.where('gestorId', '==', gestorId);
+      const snap = await col('avaliacoes').where('gestorId', '==', gestorId).get();
+      const all = snap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
+      total = all.length;
+      avaliacoes = all
+        .sort((a: any, b: any) => (b.createdAt as Date).getTime() - (a.createdAt as Date).getTime())
+        .slice(skip, skip + take);
+    } else {
+      const pagedSnap = await col('avaliacoes')
+        .orderBy('createdAt', 'desc')
+        .offset(skip)
+        .limit(take)
+        .get();
+      avaliacoes = pagedSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
+      total = (await col('avaliacoes').get()).size;
     }
-
-    const pagedSnap = await baseQuery
-      .orderBy('createdAt', 'desc')
-      .offset(skip)
-      .limit(take)
-      .get();
-    const avaliacoes = pagedSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
-
-    const totalSnap = await baseQuery.get();
-    const total = totalSnap.size;
 
     const gestorIds = avaliacoes.map((a: any) => a.gestorId).filter(Boolean);
     const autorIds = avaliacoes.map((a: any) => a.autorId).filter(Boolean);

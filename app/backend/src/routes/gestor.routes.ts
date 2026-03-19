@@ -113,12 +113,11 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
     const badgesSnap = await col('badges').where('gestorId', '==', gestor.id).get();
     const badges = badgesSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
 
-    const avaliacoesSnap = await col('avaliacoes')
-      .where('gestorId', '==', gestor.id)
-      .orderBy('createdAt', 'desc')
-      .limit(20)
-      .get();
-    const avaliacoes = avaliacoesSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
+    const avaliacoesSnap = await col('avaliacoes').where('gestorId', '==', gestor.id).get();
+    const avaliacoes = avaliacoesSnap.docs
+      .map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }))
+      .sort((a: any, b: any) => (b.createdAt as Date).getTime() - (a.createdAt as Date).getTime())
+      .slice(0, 20);
 
     const autorIds = avaliacoes.map((a: any) => a.autorId).filter(Boolean);
     const autoresById = await getManyByIds<any>('users', autorIds);
@@ -262,11 +261,10 @@ router.get('/:id/stats', authenticateToken, requireGestorOrAdmin, async (req: Au
       return res.status(403).json({ error: 'Acesso não autorizado' });
     }
 
-    const avaliacoesSnap = await col('avaliacoes')
-      .where('gestorId', '==', gestor.id)
-      .orderBy('createdAt', 'asc')
-      .get();
-    const avaliacoes = avaliacoesSnap.docs.map((d: any) => normalizeFirestoreData(d.data()) as any);
+    const avaliacoesSnap = await col('avaliacoes').where('gestorId', '==', gestor.id).get();
+    const avaliacoes = avaliacoesSnap.docs
+      .map((d: any) => normalizeFirestoreData(d.data()) as any)
+      .sort((a: any, b: any) => (a.createdAt as Date).getTime() - (b.createdAt as Date).getTime());
 
     const evolucaoMensal = avaliacoes.reduce((acc: any, av: any) => {
       const mes = (av.createdAt as Date).toISOString().slice(0, 7);
