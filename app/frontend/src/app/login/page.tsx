@@ -12,20 +12,35 @@ import { Card } from '@/components/ui/Card';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, isAuthenticated, isLoading: authLoading, loadUser } = useAuthStore();
+  const { login, logout, user, isAuthenticated, isLoading: authLoading, loadUser } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const isSwitch = params.get('switch') === '1';
+    if (isSwitch) {
+      logout();
+      return;
+    }
     loadUser();
-  }, [loadUser]);
+  }, [loadUser, logout]);
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
+      const role = user?.role;
+      if (role === 'RH_ADMIN') {
+        router.push('/admin');
+        return;
+      }
+      if (role === 'GESTOR') {
+        router.push('/dashboard/gestor');
+        return;
+      }
       router.push('/dashboard');
     }
-  }, [authLoading, isAuthenticated, router]);
+  }, [authLoading, isAuthenticated, router, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,6 +49,15 @@ export default function LoginPage() {
     try {
       await login(email, password);
       toast.success('Login realizado com sucesso!');
+      const role = useAuthStore.getState().user?.role;
+      if (role === 'RH_ADMIN') {
+        router.push('/admin');
+        return;
+      }
+      if (role === 'GESTOR') {
+        router.push('/dashboard/gestor');
+        return;
+      }
       router.push('/dashboard');
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Erro ao fazer login');

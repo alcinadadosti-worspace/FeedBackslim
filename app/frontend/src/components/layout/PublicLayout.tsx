@@ -2,7 +2,9 @@
 
 import { ReactNode } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
+import { useAuthStore } from '@/store/auth';
 
 interface PublicLayoutProps {
   children: ReactNode;
@@ -10,12 +12,24 @@ interface PublicLayoutProps {
 }
 
 export function PublicLayout({ children, showBackButton = true }: PublicLayoutProps) {
+  const router = useRouter();
+  const { isAuthenticated, user, logout } = useAuthStore();
+
+  const homeHref = isAuthenticated ? (user?.role === 'RH_ADMIN' ? '/admin' : '/dashboard') : '/';
+
+  const handleAdminAccess = () => {
+    if (isAuthenticated) {
+      logout();
+    }
+    router.push('/login');
+  };
+
   return (
     <div className="min-h-screen bg-neutral-50">
       {/* Header */}
       <header className="bg-white border-b-3 border-neutral-900 px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 group">
+          <Link href={homeHref} className="flex items-center gap-2 group">
             {showBackButton && (
               <ArrowLeft className="w-5 h-5 text-neutral-600 group-hover:text-primary-500 transition-colors" />
             )}
@@ -27,12 +41,19 @@ export function PublicLayout({ children, showBackButton = true }: PublicLayoutPr
             </div>
           </Link>
 
-          <Link
-            href="/login"
-            className="text-sm text-neutral-500 hover:text-neutral-700 transition-colors"
-          >
-            Acesso RH/Admin
-          </Link>
+          {isAuthenticated && user?.role === 'RH_ADMIN' ? (
+            <Link href="/admin" className="text-sm text-neutral-500 hover:text-neutral-700 transition-colors">
+              Painel RH/Admin
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={handleAdminAccess}
+              className="text-sm text-neutral-500 hover:text-neutral-700 transition-colors"
+            >
+              Acesso RH/Admin
+            </button>
+          )}
         </div>
       </header>
 
