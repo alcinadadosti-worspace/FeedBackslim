@@ -1,8 +1,8 @@
 import { WebClient } from '@slack/web-api';
+import { col, normalizeFirestoreData } from '../firestoreRepo';
 
 const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
 
-const SLACK_RH_CHANNEL = process.env.SLACK_RH_CHANNEL || 'rh-notifications';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 interface EvaluationNotificationParams {
@@ -14,10 +14,45 @@ interface EvaluationNotificationParams {
 }
 
 interface ComplaintNotificationParams {
-  gestorSlackId?: string;
   gestorNome: string;
   tipo: string;
+  tipoManifestacao?: string;
+  temas?: string[];
+  descricao?: string;
   denunciaId: string;
+}
+
+function parseCommaList(value: string | undefined): string[] {
+  if (!value) return [];
+  return value
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+async function getHighLeadershipSlackUserIds(): Promise<string[]> {
+  const fromEnv = parseCommaList(process.env.SLACK_DENUNCIA_ESCALATION_IDS);
+  if (fromEnv.length) return fromEnv;
+
+  const emails = [
+    'fernando@cpalcina.com',
+    'luiz@cpalcina.com',
+    'rafaela@cpalcina.com'
+  ];
+
+  const usersSnap = await col('users').where('email', 'in', emails).get();
+  const users = usersSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
+
+  const slackIds: string[] = [];
+  for (const u of users) {
+    const gestoresSnap = await col('gestores').where('userId', '==', u.id).limit(1).get();
+    if (!gestoresSnap.empty) {
+      const gestor = normalizeFirestoreData(gestoresSnap.docs[0].data()) as any;
+      if (gestor?.slackUserId) slackIds.push(String(gestor.slackUserId));
+    }
+  }
+
+  return Array.from(new Set(slackIds));
 }
 
 // Enviar notificação de avaliação para o gestor
@@ -121,7 +156,7 @@ export async function sendComplaintNotification(params: ComplaintNotificationPar
   }
 
   try {
-    const { gestorSlackId, gestorNome, tipo, denunciaId } = params;
+    const { gestorNome, tipo, tipoManifestacao, temas, descricao, denunciaId } = params;
 
     const tipoLabels: Record<string, string> = {
       ASSEDIO_MORAL: 'Assédio Moral',
@@ -130,113 +165,95 @@ export async function sendComplaintNotification(params: ComplaintNotificationPar
       OUTROS: 'Outros'
     };
 
-    // Notificação para o canal do RH
-    const rhMessage = {
-      channel: SLACK_RH_CHANNEL,
-      text: `Nova denúncia registrada na ouvidoria do Pulse360`,
-      blocks: [
-        {
-          type: 'header',
-          text: {
-            type: 'plain_text',
-            text: '🚨 Nova Denúncia na Ouvidoria',
-            emoji: true
-          }
-        },
-        {
-          type: 'section',
-          text: {
-            type: 'mrkdwn',
-            text: `Uma nova denúncia foi registrada na ouvidoria do Pulse360.`
-          }
-        },
-        {
-          type: 'section',
-          fields: [
-            {
-              type: 'mrkdwn',
-              text: `*Gestor:*\n${gestorNome}`
-            },
-            {
-              type: 'mrkdwn',
-              text: `*Tipo:*\n${tipoLabels[tipo] || tipo}`
-            },
-            {
-              type: 'mrkdwn',
-              text: `*Data:*\n${new Date().toLocaleDateString('pt-BR')}`
-            },
-            {
-              type: 'mrkdwn',
-              text: `*Status:*\nPendente`
-            }
-          ]
-        },
-        {
-          type: 'actions',
-          elements: [
-            {
-              type: 'button',
-              text: {
-                type: 'plain_text',
-                text: 'Ver Denúncia',
-                emoji: true
-              },
-              url: `${FRONTEND_URL}/admin/denuncias/${denunciaId}`,
-              style: 'danger'
-            },
-            {
-              type: 'button',
-              text: {
-                type: 'plain_text',
-                text: 'Painel de Denúncias',
-                emoji: true
-              },
-              url: `${FRONTEND_URL}/admin/denuncias`
-            }
-          ]
-        },
-        {
-          type: 'context',
-          elements: [
-            {
-              type: 'mrkdwn',
-              text: '⚠️ Esta denúncia requer atenção da equipe de RH'
-            }
-          ]
-        }
-      ]
+    const tipoManifestacaoLabels: Record<string, string> = {
+      DENUNCIA: 'Denúncia',
+      RECLAMACAO: 'Reclamação',
+      SUGESTAO_MELHORIA: 'Sugestão de melhoria',
+      ELOGIO: 'Elogio',
+      DUVIDA: 'Dúvida',
+      OUTRO: 'Outro'
     };
 
-    await slack.chat.postMessage(rhMessage);
-    console.log(`Notificação de denúncia enviada para canal RH`);
+    const recipients = await getHighLeadershipSlackUserIds();
+    if (!recipients.length) {
+      console.log('Slack não configurado - nenhum destinatário de alta liderança encontrado para denúncia');
+      return;
+    }
 
-    // Notificação discreta para o gestor (se tiver Slack configurado)
-    if (gestorSlackId) {
-      const gestorMessage = {
-        channel: gestorSlackId,
-        text: `Uma nova comunicação foi registrada sobre sua gestão no Pulse360`,
-        blocks: [
+    const blocks: any[] = [
+      {
+        type: 'header',
+        text: {
+          type: 'plain_text',
+          text: '🚨 Nova Manifestação na Ouvidoria',
+          emoji: true
+        }
+      },
+      {
+        type: 'section',
+        fields: [
           {
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: `Uma nova comunicação foi registrada sobre sua gestão no Pulse360. O RH entrará em contato se necessário.`
-            }
+            type: 'mrkdwn',
+            text: `*Gestor envolvido:*\n${gestorNome}`
           },
           {
-            type: 'context',
-            elements: [
-              {
-                type: 'mrkdwn',
-                text: '📋 Pulse360 - Ouvidoria'
-              }
-            ]
+            type: 'mrkdwn',
+            text: `*Classificação:*\n${tipoLabels[tipo] || tipo}`
+          },
+          {
+            type: 'mrkdwn',
+            text: `*Tipo de manifestação:*\n${tipoManifestacao ? (tipoManifestacaoLabels[tipoManifestacao] || tipoManifestacao) : '-'}`
+          },
+          {
+            type: 'mrkdwn',
+            text: `*Data:*\n${new Date().toLocaleDateString('pt-BR')}`
           }
         ]
-      };
+      }
+    ];
 
-      await slack.chat.postMessage(gestorMessage);
-      console.log(`Notificação enviada para gestor ${gestorSlackId}`);
+    if (temas?.length) {
+      blocks.push({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*Temas:*\n${temas.slice(0, 8).map((t) => `• ${t}`).join('\n')}${temas.length > 8 ? '\n• ...' : ''}`
+        }
+      });
+    }
+
+    if (descricao) {
+      blocks.push({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*Resumo:*\n_${descricao.substring(0, 240)}${descricao.length > 240 ? '...' : ''}_`
+        }
+      });
+    }
+
+    blocks.push({
+      type: 'actions',
+      elements: [
+        {
+          type: 'button',
+          text: {
+            type: 'plain_text',
+            text: 'Ver no Painel',
+            emoji: true
+          },
+          url: `${FRONTEND_URL}/admin/denuncias/${denunciaId}`,
+          style: 'danger'
+        }
+      ]
+    });
+
+    for (const channel of recipients) {
+      await slack.chat.postMessage({
+        channel,
+        text: `Nova manifestação registrada na ouvidoria do Pulse360`,
+        blocks
+      });
     }
   } catch (error) {
     console.error('Erro ao enviar notificação Slack de denúncia:', error);

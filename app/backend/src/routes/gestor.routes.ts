@@ -116,6 +116,7 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
     const avaliacoesSnap = await col('avaliacoes').where('gestorId', '==', gestor.id).get();
     const avaliacoes = avaliacoesSnap.docs
       .map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }))
+      .filter((a: any) => a.publica !== false)
       .sort((a: any, b: any) => (b.createdAt as Date).getTime() - (a.createdAt as Date).getTime())
       .slice(0, 20);
 

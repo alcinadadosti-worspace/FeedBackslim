@@ -1,6 +1,5 @@
 import { Router, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import type { Query } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { authenticateToken, AuthRequest } from '../middleware/auth.middleware';
 import { avaliacaoLimiter } from '../middleware/rateLimit.middleware';
@@ -8,6 +7,7 @@ import { sendEvaluationNotification } from '../services/slack.service';
 import { col, docRef, getManyByIds, normalizeFirestoreData, snapData } from '../firestoreRepo';
 import { BadgeType } from '../models';
 import { firestore } from '../firebase';
+import { Role } from '../models';
 
 const router = Router();
 
@@ -124,6 +124,7 @@ router.post('/', avaliacaoLimiter, async (req: AuthRequest, res: Response) => {
         elogio: data.elogio ?? null,
         sugestao: data.sugestao ?? null,
         critica: data.critica ?? null,
+        publica: false,
         createdAt: now
       });
 
@@ -164,6 +165,7 @@ router.post('/', avaliacaoLimiter, async (req: AuthRequest, res: Response) => {
       elogio: data.elogio,
       sugestao: data.sugestao,
       critica: data.critica,
+      publica: false,
       createdAt: now
     });
   } catch (error) {
@@ -172,6 +174,51 @@ router.post('/', avaliacaoLimiter, async (req: AuthRequest, res: Response) => {
     }
     console.error(error);
     res.status(500).json({ error: 'Erro ao criar avaliação' });
+  }
+});
+
+router.patch('/:id/publica', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const body = z.object({ publica: z.boolean() }).parse(req.body);
+    const avaliacaoId = req.params.id;
+
+    const avaliacaoSnap = await docRef('avaliacoes', avaliacaoId).get();
+    const avaliacao = snapData<any>(avaliacaoSnap as any);
+    if (!avaliacao) {
+      return res.status(404).json({ error: 'Avaliação não encontrada' });
+    }
+
+    if (req.user?.role !== Role.RH_ADMIN) {
+      if (req.user?.role !== Role.GESTOR) {
+        return res.status(403).json({ error: 'Acesso não autorizado' });
+      }
+
+      const gestorQuery = await col('gestores').where('userId', '==', req.user.id).limit(1).get();
+      const gestorDoc = gestorQuery.docs[0];
+      if (!gestorDoc) {
+        return res.status(403).json({ error: 'Perfil de gestor não encontrado' });
+      }
+      if (gestorDoc.id !== avaliacao.gestorId) {
+        return res.status(403).json({ error: 'Acesso não autorizado' });
+      }
+    }
+
+    await docRef('avaliacoes', avaliacaoId).set(
+      {
+        publica: body.publica,
+        updatedAt: new Date()
+      },
+      { merge: true }
+    );
+
+    const updatedSnap = await docRef('avaliacoes', avaliacaoId).get();
+    const updated = snapData<any>(updatedSnap as any);
+    res.json(updated);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: error.errors[0].message });
+    }
+    res.status(500).json({ error: 'Erro ao atualizar visibilidade' });
   }
 });
 

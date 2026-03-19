@@ -1,15 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BarChart3, Star, ThumbsUp, Lightbulb, AlertCircle, TrendingUp } from 'lucide-react';
+import { BarChart3, Star, ThumbsUp, Lightbulb, AlertCircle, TrendingUp, Eye, EyeOff } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardTitle, CardContent } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
 import { BadgeIcon } from '@/components/ui/Badge';
 import { SimpleRating } from '@/components/ui/Rating';
 import { Loading } from '@/components/ui/Loading';
+import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/store/auth';
-import { dashboardAPI } from '@/lib/api';
+import { avaliacoesAPI, dashboardAPI } from '@/lib/api';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -28,6 +29,7 @@ export default function GestorDashboardPage() {
   const { user } = useAuthStore();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [updatingPublic, setUpdatingPublic] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     loadDashboard();
@@ -41,6 +43,24 @@ export default function GestorDashboardPage() {
       console.error('Erro ao carregar dashboard:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const setAvaliacaoPublica = async (avaliacaoId: string, publica: boolean) => {
+    setUpdatingPublic((prev) => ({ ...prev, [avaliacaoId]: true }));
+    try {
+      const resp = await avaliacoesAPI.setPublica(avaliacaoId, publica);
+      setData((prev: any) => {
+        if (!prev?.avaliacoesRecentes) return prev;
+        return {
+          ...prev,
+          avaliacoesRecentes: prev.avaliacoesRecentes.map((a: any) => (a.id === avaliacaoId ? { ...a, ...resp.data } : a))
+        };
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar visibilidade:', error);
+    } finally {
+      setUpdatingPublic((prev) => ({ ...prev, [avaliacaoId]: false }));
     }
   };
 
@@ -217,7 +237,7 @@ export default function GestorDashboardPage() {
             <div className="space-y-4">
               {data.avaliacoesRecentes?.map((avaliacao: any) => (
                 <div key={avaliacao.id} className="p-4 border-2 border-neutral-200">
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center justify-between mb-3 gap-4">
                     <div className="flex items-center gap-3">
                       <Avatar src={null} alt={avaliacao.autor?.nome} size="sm" />
                       <div>
@@ -229,7 +249,27 @@ export default function GestorDashboardPage() {
                         </p>
                       </div>
                     </div>
-                    <SimpleRating value={avaliacao.nota} />
+                    <div className="flex items-center gap-3">
+                      <SimpleRating value={avaliacao.nota} />
+                      <Button
+                        variant={avaliacao.publica !== false ? 'secondary' : 'outline'}
+                        size="sm"
+                        loading={!!updatingPublic[avaliacao.id]}
+                        onClick={() => setAvaliacaoPublica(avaliacao.id, avaliacao.publica === false)}
+                      >
+                        {avaliacao.publica !== false ? (
+                          <>
+                            <Eye className="w-4 h-4" />
+                            Público
+                          </>
+                        ) : (
+                          <>
+                            <EyeOff className="w-4 h-4" />
+                            Privado
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="space-y-2">

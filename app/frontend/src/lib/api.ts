@@ -69,6 +69,7 @@ export const avaliacoesAPI = {
     critica?: string;
   }) => api.post('/avaliacoes', data),
   getById: (id: string) => api.get(`/avaliacoes/${id}`),
+  setPublica: (id: string, publica: boolean) => api.patch(`/avaliacoes/${id}/publica`, { publica }),
 };
 
 // Denúncias endpoints

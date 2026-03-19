@@ -173,9 +173,11 @@ router.post('/', denunciaLimiter, async (req: AuthRequest, res: Response) => {
       const gestorUserSnap = await docRef('users', gestor.userId).get();
       const gestorUser = snapData<any>(gestorUserSnap as any);
       await sendComplaintNotification({
-        gestorSlackId: gestor.slackUserId || undefined,
         gestorNome: gestorUser?.nome || 'Gestor',
         tipo,
+        tipoManifestacao: data.tipoManifestacao,
+        temas: data.temas,
+        descricao: data.descricao,
         denunciaId: denunciaId
       });
     } catch (slackError) {
