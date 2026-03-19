@@ -39,8 +39,8 @@ export default function RegistroPage() {
       return;
     }
 
-    if (password.length < 6) {
-      toast.error('A senha deve ter no mínimo 6 caracteres');
+    if (password.length < 5) {
+      toast.error('A senha deve ter no mínimo 5 caracteres');
       return;
     }
 
