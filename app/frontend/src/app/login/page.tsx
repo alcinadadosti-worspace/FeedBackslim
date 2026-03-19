@@ -9,6 +9,7 @@ import { useAuthStore } from '@/store/auth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
+import { Logo } from '@/components/ui/Logo';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -81,9 +82,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-primary-500 border-3 border-neutral-900 shadow-brutal flex items-center justify-center">
-              <span className="font-bold text-2xl">O</span>
-            </div>
+            <Logo size="lg" />
             <span className="font-display font-bold text-3xl">Ouvidoria</span>
           </div>
           <p className="text-neutral-600 font-medium">

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { Avatar } from '@/components/ui/Avatar';
+import { Logo } from '@/components/ui/Logo';
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -93,9 +94,7 @@ export function Sidebar() {
       {/* Logo */}
       <div className="p-6 border-b-3 border-neutral-900">
         <Link href="/dashboard" className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary-500 border-3 border-neutral-900 flex items-center justify-center">
-            <span className="font-bold text-lg">O</span>
-          </div>
+          <Logo />
           <span className="font-display font-bold text-xl">Ouvidoria</span>
         </Link>
       </div>
