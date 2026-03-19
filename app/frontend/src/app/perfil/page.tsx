@@ -44,8 +44,25 @@ export default function PerfilPage() {
 
       if (isGestor) {
         setFoto(url);
+        if (user?.gestor?.id) {
+          await gestoresAPI.update(user.gestor.id, { foto: url });
+          updateUser({
+            gestor: user?.gestor
+              ? {
+                  ...user.gestor,
+                  foto: url
+                }
+              : undefined
+          });
+        } else {
+          setAvatar(url);
+          await api.put(`/users/${user?.id}`, { avatar: url });
+          updateUser({ avatar: url });
+        }
       } else {
         setAvatar(url);
+        await api.put(`/users/${user?.id}`, { avatar: url });
+        updateUser({ avatar: url });
       }
 
       toast.success('Foto enviada com sucesso!');

@@ -1,30 +1,13 @@
 import { Router, Response } from 'express';
 import multer from 'multer';
-import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import fs from 'fs';
+import admin from 'firebase-admin';
 import { authenticateToken, AuthRequest } from '../middleware/auth.middleware';
+import { getFirebaseAdminApp } from '../firebase';
 
 const router = Router();
 
-// Configuração do Multer para armazenamento local
-const uploadDir = path.join(__dirname, '../../uploads');
-
-// Criar diretório se não existir
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    const filename = `${uuidv4()}${ext}`;
-    cb(null, filename);
-  }
-});
+const storage = multer.memoryStorage();
 
 const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -44,6 +27,28 @@ const upload = multer({
   }
 });
 
+function getProjectIdFromEnv(): string | undefined {
+  if (process.env.FIREBASE_PROJECT_ID) return process.env.FIREBASE_PROJECT_ID;
+  const json = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (!json) return undefined;
+  try {
+    const parsed = JSON.parse(json) as any;
+    return parsed.project_id || parsed.projectId;
+  } catch {
+    return undefined;
+  }
+}
+
+function getStorageBucketName(): string {
+  const explicit = process.env.FIREBASE_STORAGE_BUCKET;
+  if (explicit) return explicit;
+  const projectId = getProjectIdFromEnv();
+  if (!projectId) {
+    throw new Error('Não foi possível determinar o bucket do Firebase Storage (FIREBASE_STORAGE_BUCKET ou FIREBASE_PROJECT_ID/FIREBASE_SERVICE_ACCOUNT_JSON)');
+  }
+  return `${projectId}.appspot.com`;
+}
+
 // Upload de imagem
 router.post('/', authenticateToken, upload.single('file'), async (req: AuthRequest, res: Response) => {
   try {
@@ -51,17 +56,38 @@ router.post('/', authenticateToken, upload.single('file'), async (req: AuthReque
       return res.status(400).json({ error: 'Nenhum arquivo enviado' });
     }
 
-    const relativeUrl = `/uploads/${req.file.filename}`;
-    const forwardedProto = req.headers['x-forwarded-proto'];
-    const forwardedHost = req.headers['x-forwarded-host'];
-    const host = (Array.isArray(forwardedHost) ? forwardedHost[0] : forwardedHost) || req.headers.host;
-    const proto = (Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto) || req.protocol;
-    const absoluteUrl = host ? `${proto}://${host}${relativeUrl}` : undefined;
+    getFirebaseAdminApp();
+    const bucketName = getStorageBucketName();
+
+    const extFromMime: Record<string, string> = {
+      'image/jpeg': '.jpg',
+      'image/png': '.png',
+      'image/gif': '.gif',
+      'image/webp': '.webp'
+    };
+    const ext = extFromMime[req.file.mimetype] || '';
+    const filename = `${uuidv4()}${ext}`;
+    const objectPath = `uploads/${filename}`;
+
+    const bucket = admin.storage().bucket(bucketName);
+    const file = bucket.file(objectPath);
+    await file.save(req.file.buffer, {
+      contentType: req.file.mimetype,
+      resumable: false,
+      metadata: {
+        cacheControl: 'public, max-age=31536000'
+      }
+    });
+
+    const [signedUrl] = await file.getSignedUrl({
+      action: 'read',
+      expires: Date.now() + 1000 * 60 * 60 * 24 * 365 * 10
+    });
 
     res.json({
-      url: relativeUrl,
-      absoluteUrl,
-      filename: req.file.filename,
+      url: signedUrl,
+      filename,
+      path: objectPath,
       size: req.file.size,
       mimetype: req.file.mimetype
     });
@@ -74,14 +100,12 @@ router.post('/', authenticateToken, upload.single('file'), async (req: AuthReque
 // Deletar imagem
 router.delete('/:filename', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const filePath = path.join(uploadDir, req.params.filename);
-
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-      res.json({ message: 'Arquivo deletado com sucesso' });
-    } else {
-      res.status(404).json({ error: 'Arquivo não encontrado' });
-    }
+    getFirebaseAdminApp();
+    const bucketName = getStorageBucketName();
+    const bucket = admin.storage().bucket(bucketName);
+    const file = bucket.file(`uploads/${req.params.filename}`);
+    await file.delete({ ignoreNotFound: true });
+    res.json({ message: 'Arquivo deletado com sucesso' });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao deletar arquivo' });
   }

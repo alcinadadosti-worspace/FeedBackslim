@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
-import { Logo } from '@/components/ui/Logo';
 
 interface PublicLayoutProps {
   children: ReactNode;
@@ -35,7 +34,9 @@ export function PublicLayout({ children, showBackButton = true }: PublicLayoutPr
               <ArrowLeft className="w-5 h-5 text-neutral-600 group-hover:text-primary-500 transition-colors" />
             )}
             <div className="flex items-center gap-2">
-              <Logo size="md" className="shadow-none border-2" />
+              <div className="w-8 h-8 bg-primary-500 border-2 border-neutral-900 flex items-center justify-center font-black text-white text-sm">
+                O
+              </div>
               <span className="font-black text-xl text-neutral-900">Ouvidoria</span>
             </div>
           </Link>
