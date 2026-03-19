@@ -40,10 +40,23 @@ export function Avatar({ src, alt = 'Avatar', size = 'md', className }: AvatarPr
     );
   }
 
+  const normalizedSrc = (() => {
+    if (src.startsWith('/')) return src;
+    if (src.startsWith('http://localhost:') || src.startsWith('http://127.0.0.1:')) {
+      try {
+        const url = new URL(src);
+        return url.pathname + url.search + url.hash;
+      } catch {
+        return src;
+      }
+    }
+    return src;
+  })();
+
   return (
     <div className={clsx('relative rounded-full border-3 border-neutral-900 overflow-hidden', sizes[size], className)}>
       <Image
-        src={src}
+        src={normalizedSrc}
         alt={alt}
         fill
         className="object-cover"

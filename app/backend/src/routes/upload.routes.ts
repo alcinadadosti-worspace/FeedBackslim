@@ -51,11 +51,16 @@ router.post('/', authenticateToken, upload.single('file'), async (req: AuthReque
       return res.status(400).json({ error: 'Nenhum arquivo enviado' });
     }
 
-    const baseUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 3001}`;
-    const fileUrl = `${baseUrl}/uploads/${req.file.filename}`;
+    const relativeUrl = `/uploads/${req.file.filename}`;
+    const forwardedProto = req.headers['x-forwarded-proto'];
+    const forwardedHost = req.headers['x-forwarded-host'];
+    const host = (Array.isArray(forwardedHost) ? forwardedHost[0] : forwardedHost) || req.headers.host;
+    const proto = (Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto) || req.protocol;
+    const absoluteUrl = host ? `${proto}://${host}${relativeUrl}` : undefined;
 
     res.json({
-      url: fileUrl,
+      url: relativeUrl,
+      absoluteUrl,
       filename: req.file.filename,
       size: req.file.size,
       mimetype: req.file.mimetype
