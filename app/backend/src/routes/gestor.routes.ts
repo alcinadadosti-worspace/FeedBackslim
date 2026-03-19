@@ -1,9 +1,10 @@
 import { Router, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
-import { authenticateToken, AuthRequest, requireGestorOrAdmin } from '../middleware/auth.middleware';
+import { authenticateToken, AuthRequest, requireAdmin, requireGestorOrAdmin } from '../middleware/auth.middleware';
 import { Role } from '../models';
 import { col, docRef, getManyByIds, normalizeFirestoreData, snapData } from '../firestoreRepo';
+import { firestore } from '../firebase';
 
 const router = Router();
 
@@ -21,6 +22,96 @@ const createGestorSchema = z.object({
   bio: z.string().optional(),
   foto: z.string().optional(),
   slackUserId: z.string().optional()
+});
+
+router.post('/slack/sync', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const schema = z.object({
+      mappings: z.array(
+        z.object({
+          email: z.string().email(),
+          slackUserId: z.string().min(1)
+        })
+      )
+    });
+
+    const { mappings } = schema.parse(req.body);
+    if (!mappings.length) {
+      return res.json({ updated: 0, missingUsers: [], missingGestores: [] });
+    }
+
+    const uniqueMappings = Array.from(
+      new Map(mappings.map((m) => [m.email.toLowerCase(), { email: m.email.toLowerCase(), slackUserId: m.slackUserId }])).values()
+    );
+
+    const chunk = <T,>(arr: T[], size: number) => {
+      const out: T[][] = [];
+      for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+      return out;
+    };
+
+    const missingUsers: string[] = [];
+    const missingGestores: string[] = [];
+    let updated = 0;
+
+    for (const group of chunk(uniqueMappings, 10)) {
+      const emails = group.map((m) => m.email);
+      const usersSnap = await col('users').where('email', 'in', emails).get();
+      const users = usersSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
+      const userByEmail = new Map(users.map((u: any) => [String(u.email).toLowerCase(), u]));
+
+      for (const m of group) {
+        if (!userByEmail.has(m.email)) missingUsers.push(m.email);
+      }
+
+      const userIds = users.map((u: any) => u.id);
+      if (!userIds.length) continue;
+
+      const gestoresSnap = await col('gestores').where('userId', 'in', userIds.slice(0, 10)).get();
+      const gestores = gestoresSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
+      const gestorByUserId = new Map(gestores.map((g: any) => [g.userId, g]));
+
+      let batch = firestore.batch();
+      let ops = 0;
+
+      for (const m of group) {
+        const u = userByEmail.get(m.email);
+        if (!u) continue;
+        const g = gestorByUserId.get(u.id);
+        if (!g) {
+          missingGestores.push(m.email);
+          continue;
+        }
+        batch.set(
+          docRef('gestores', g.id),
+          {
+            slackUserId: m.slackUserId,
+            updatedAt: new Date()
+          },
+          { merge: true }
+        );
+        updated++;
+        ops++;
+        if (ops >= 450) {
+          await batch.commit();
+          batch = firestore.batch();
+          ops = 0;
+        }
+      }
+
+      if (ops > 0) {
+        await batch.commit();
+      }
+    }
+
+    res.json({ updated, missingUsers, missingGestores });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: error.errors[0].message });
+    }
+    const message = error instanceof Error ? error.message : 'Erro ao sincronizar Slack IDs';
+    res.status(500).json({ error: message });
+  }
 });
 
 // Listar todos os gestores (público - sem autenticação)

@@ -30,7 +30,15 @@ function parseCommaList(value: string | undefined): string[] {
     .filter(Boolean);
 }
 
+function getTestSlackUserId(): string | undefined {
+  const value = process.env.SLACK_TEST_USER_ID;
+  return value ? String(value).trim() : undefined;
+}
+
 async function getHighLeadershipSlackUserIds(): Promise<string[]> {
+  const testId = getTestSlackUserId();
+  if (testId) return [testId];
+
   const fromEnv = parseCommaList(process.env.SLACK_DENUNCIA_ESCALATION_IDS);
   if (fromEnv.length) return fromEnv;
 
@@ -64,9 +72,10 @@ export async function sendEvaluationNotification(params: EvaluationNotificationP
 
   try {
     const { slackUserId, gestorNome, nota, comentario, avaliacaoId } = params;
+    const testId = getTestSlackUserId();
 
     const message = {
-      channel: slackUserId,
+      channel: testId || slackUserId,
       text: `Você recebeu uma nova avaliação no Pulse360`,
       blocks: [
         {
@@ -77,6 +86,15 @@ export async function sendEvaluationNotification(params: EvaluationNotificationP
             emoji: true
           }
         },
+        ...(testId ? [{
+          type: 'context',
+          elements: [
+            {
+              type: 'mrkdwn',
+              text: `⚠️ Modo teste: originalmente para <@${slackUserId}>`
+            }
+          ]
+        }] : []),
         {
           type: 'section',
           text: {
