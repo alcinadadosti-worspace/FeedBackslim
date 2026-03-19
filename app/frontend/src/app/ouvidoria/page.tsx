@@ -13,12 +13,71 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Loading } from '@/components/ui/Loading';
 import { gestoresAPI, denunciasAPI } from '@/lib/api';
 
-const tiposDenuncia = [
+const tiposManifestacao = [
   { value: '', label: 'Selecione o tipo' },
-  { value: 'ASSEDIO_MORAL', label: 'Assédio Moral' },
-  { value: 'COMPORTAMENTO_INADEQUADO', label: 'Comportamento Inadequado' },
-  { value: 'ABUSO_AUTORIDADE', label: 'Abuso de Autoridade' },
-  { value: 'OUTROS', label: 'Outros' },
+  { value: 'DENUNCIA', label: 'Denúncia' },
+  { value: 'RECLAMACAO', label: 'Reclamação' },
+  { value: 'SUGESTAO_MELHORIA', label: 'Sugestão de melhoria' },
+  { value: 'ELOGIO', label: 'Elogio' },
+  { value: 'DUVIDA', label: 'Dúvida' },
+  { value: 'OUTRO', label: 'Outro' },
+];
+
+const temasOptions = [
+  'Conduta ética ou comportamento inadequado',
+  'Assédio moral',
+  'Assédio sexual',
+  'Discriminação (gênero, raça, idade, religião, orientação sexual, deficiência, etc.)',
+  'Relacionamento com liderança',
+  'Clima organizacional',
+  'Comunicação interna',
+  'Sobrecarga de trabalho / metas excessivas',
+  'Saúde mental e bem-estar',
+  'Falta de respeito no ambiente de trabalho',
+  'Conflitos entre colegas',
+  'Processos internos ineficientes',
+  'Falhas de gestão ou liderança',
+  'Injustiça ou favorecimento indevido',
+  'Segurança no trabalho',
+  'Descumprimento de normas ou políticas internas',
+  'Outros',
+];
+
+const frequenciaOptions = [
+  { value: '', label: 'Selecione' },
+  { value: 'UMA_VEZ', label: 'Uma única vez' },
+  { value: 'MAIS_DE_UMA_VEZ', label: 'Mais de uma vez' },
+  { value: 'FREQUENTE', label: 'Ocorre com frequência' },
+];
+
+const impactoOptions = [
+  { value: '', label: 'Selecione' },
+  { value: 'DESEMPENHO', label: 'Impacta meu desempenho' },
+  { value: 'SAUDE_MENTAL', label: 'Impacta minha saúde emocional ou mental' },
+  { value: 'CLIMA_EQUIPE', label: 'Impacta o clima da equipe' },
+  { value: 'RESULTADOS', label: 'Impacta os resultados da área' },
+  { value: 'NAO_SEI', label: 'Não sei avaliar' },
+];
+
+const envolvidosOptions = [
+  { value: '', label: 'Selecione' },
+  { value: 'SIM', label: 'Sim' },
+  { value: 'NAO', label: 'Não' },
+  { value: 'NAO_SEI', label: 'Não sei' },
+];
+
+const comunicadaOptions = [
+  { value: '', label: 'Selecione' },
+  { value: 'LIDERANCA', label: 'Sim, à liderança' },
+  { value: 'RH', label: 'Sim, ao RH' },
+  { value: 'OUTRO_CANAL', label: 'Sim, a outro canal' },
+  { value: 'NAO', label: 'Não' },
+];
+
+const retornoOptions = [
+  { value: '', label: 'Selecione' },
+  { value: 'SIM', label: 'Sim' },
+  { value: 'NAO', label: 'Não' },
 ];
 
 export default function OuvidoriaPage() {
@@ -26,8 +85,16 @@ export default function OuvidoriaPage() {
   const [gestores, setGestores] = useState<any[]>([]);
   const [selectedGestorId, setSelectedGestorId] = useState('');
   const [selectedGestor, setSelectedGestor] = useState<any>(null);
-  const [tipo, setTipo] = useState('');
+  const [tipoManifestacao, setTipoManifestacao] = useState('');
+  const [temas, setTemas] = useState<string[]>([]);
   const [descricao, setDescricao] = useState('');
+  const [descricaoComplementar, setDescricaoComplementar] = useState('');
+  const [frequencia, setFrequencia] = useState('');
+  const [impacto, setImpacto] = useState('');
+  const [envolvidos, setEnvolvidos] = useState('');
+  const [comunicada, setComunicada] = useState('');
+  const [desejaRetorno, setDesejaRetorno] = useState('');
+  const [declaracao, setDeclaracao] = useState(false);
   const [anonima, setAnonima] = useState(true);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -64,8 +131,13 @@ export default function OuvidoriaPage() {
       return;
     }
 
-    if (!tipo) {
-      toast.error('Selecione o tipo de denúncia');
+    if (!tipoManifestacao) {
+      toast.error('Selecione o tipo de manifestação');
+      return;
+    }
+
+    if (temas.length === 0) {
+      toast.error('Selecione pelo menos um tema');
       return;
     }
 
@@ -74,13 +146,56 @@ export default function OuvidoriaPage() {
       return;
     }
 
+    if (descricaoComplementar.length < 10) {
+      toast.error('A descrição complementar deve ter pelo menos 10 caracteres');
+      return;
+    }
+
+    if (!frequencia) {
+      toast.error('Selecione a frequência');
+      return;
+    }
+
+    if (!impacto) {
+      toast.error('Selecione o impacto');
+      return;
+    }
+
+    if (!envolvidos) {
+      toast.error('Selecione se alguém mais está envolvido');
+      return;
+    }
+
+    if (!comunicada) {
+      toast.error('Selecione se a situação já foi comunicada');
+      return;
+    }
+
+    if (!desejaRetorno) {
+      toast.error('Selecione se deseja receber retorno');
+      return;
+    }
+
+    if (!declaracao) {
+      toast.error('Você precisa concordar com a declaração final');
+      return;
+    }
+
     setSubmitting(true);
 
     try {
       await denunciasAPI.create({
         gestorId: selectedGestorId,
-        tipo,
+        tipoManifestacao,
+        temas,
         descricao,
+        descricaoComplementar,
+        frequencia,
+        impacto,
+        envolvidos,
+        comunicada,
+        desejaRetorno,
+        declaracao,
         anonima,
       });
 
@@ -150,18 +265,45 @@ export default function OuvidoriaPage() {
                   )}
                 </div>
 
-                {/* Tipo de Denúncia */}
                 <Select
-                  label="Tipo de Denúncia"
-                  options={tiposDenuncia}
-                  value={tipo}
-                  onChange={(e) => setTipo(e.target.value)}
+                  label="Tipo de manifestação"
+                  options={tiposManifestacao}
+                  value={tipoManifestacao}
+                  onChange={(e) => setTipoManifestacao(e.target.value)}
                 />
+
+                <div>
+                  <p className="font-bold text-neutral-900 mb-2">Temas abordados</p>
+                  <p className="text-sm text-neutral-600 mb-3">
+                    Selecione o(s) tema(s) relacionado(s) à sua manifestação:
+                  </p>
+                  <div className="space-y-2">
+                    {temasOptions.map((t) => {
+                      const checked = temas.includes(t);
+                      return (
+                        <label
+                          key={t}
+                          className="flex items-start gap-3 p-3 bg-white border-2 border-neutral-200 hover:border-neutral-300 transition-colors cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            className="mt-1"
+                            checked={checked}
+                            onChange={() => {
+                              setTemas((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
+                            }}
+                          />
+                          <span className="text-sm text-neutral-800">{t}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
 
                 {/* Descrição */}
                 <div>
                   <Textarea
-                    label="Descrição da Denúncia"
+                    label="Descrição da manifestação"
                     placeholder="Descreva em detalhes o ocorrido. Inclua datas, locais e outras informações relevantes."
                     value={descricao}
                     onChange={(e) => setDescricao(e.target.value)}
@@ -170,6 +312,69 @@ export default function OuvidoriaPage() {
                   <p className="text-xs text-neutral-500 mt-1">
                     Mínimo de 10 caracteres. Quanto mais detalhes, melhor.
                   </p>
+                </div>
+
+                <div>
+                  <Textarea
+                    label="Descrição complementar"
+                    placeholder="Descreva com o máximo de detalhes possível o ocorrido ou sua sugestão."
+                    value={descricaoComplementar}
+                    onChange={(e) => setDescricaoComplementar(e.target.value)}
+                    rows={6}
+                  />
+                  <p className="text-xs text-neutral-500 mt-1">
+                    Sempre que possível, informe fatos, datas, locais, envolvidos (nomes ou cargos) e impactos.
+                  </p>
+                </div>
+
+                <Select
+                  label="Essa situação ocorreu"
+                  options={frequenciaOptions}
+                  value={frequencia}
+                  onChange={(e) => setFrequencia(e.target.value)}
+                />
+
+                <Select
+                  label="Qual o impacto dessa situação?"
+                  options={impactoOptions}
+                  value={impacto}
+                  onChange={(e) => setImpacto(e.target.value)}
+                />
+
+                <Select
+                  label="Alguém mais está envolvido ou vivencia a mesma situação?"
+                  options={envolvidosOptions}
+                  value={envolvidos}
+                  onChange={(e) => setEnvolvidos(e.target.value)}
+                />
+
+                <Select
+                  label="A situação já foi comunicada a alguém da empresa?"
+                  options={comunicadaOptions}
+                  value={comunicada}
+                  onChange={(e) => setComunicada(e.target.value)}
+                />
+
+                <Select
+                  label="Deseja receber retorno sobre esta manifestação?"
+                  options={retornoOptions}
+                  value={desejaRetorno}
+                  onChange={(e) => setDesejaRetorno(e.target.value)}
+                />
+
+                <div className="p-4 bg-neutral-50 border-2 border-neutral-200">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      checked={declaracao}
+                      onChange={(e) => setDeclaracao(e.target.checked)}
+                    />
+                    <span className="text-sm text-neutral-800">
+                      Declaro que as informações prestadas são verdadeiras, de acordo com meu conhecimento, e estou ciente
+                      de que este canal deve ser utilizado de forma ética e responsável.
+                    </span>
+                  </label>
                 </div>
 
                 {/* Anonimato */}

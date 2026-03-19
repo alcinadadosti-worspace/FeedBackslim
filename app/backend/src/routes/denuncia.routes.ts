@@ -11,8 +11,16 @@ const router = Router();
 
 const createDenunciaSchema = z.object({
   gestorId: z.string().uuid('ID do gestor inválido'),
-  tipo: z.nativeEnum(TipoDenuncia),
+  tipoManifestacao: z.enum(['DENUNCIA', 'RECLAMACAO', 'SUGESTAO_MELHORIA', 'ELOGIO', 'DUVIDA', 'OUTRO']),
+  temas: z.array(z.string().min(1)).min(1, 'Selecione ao menos um tema'),
   descricao: z.string().min(10, 'Descrição deve ter no mínimo 10 caracteres'),
+  descricaoComplementar: z.string().min(10, 'Descrição complementar deve ter no mínimo 10 caracteres'),
+  frequencia: z.enum(['UMA_VEZ', 'MAIS_DE_UMA_VEZ', 'FREQUENTE']),
+  impacto: z.enum(['DESEMPENHO', 'SAUDE_MENTAL', 'CLIMA_EQUIPE', 'RESULTADOS', 'NAO_SEI']),
+  envolvidos: z.enum(['SIM', 'NAO', 'NAO_SEI']),
+  comunicada: z.enum(['LIDERANCA', 'RH', 'OUTRO_CANAL', 'NAO']),
+  desejaRetorno: z.enum(['SIM', 'NAO']),
+  declaracao: z.boolean().refine((v) => v === true, 'Declaração final é obrigatória'),
   anonima: z.boolean().default(true)
 });
 
@@ -125,12 +133,35 @@ router.post('/', denunciaLimiter, async (req: AuthRequest, res: Response) => {
     // Criar denúncia anônima (sem autorId)
     const now = new Date();
     const denunciaId = uuidv4();
+
+    const tipo = (() => {
+      const temas = data.temas || [];
+      const has = (needle: string) => temas.some((t) => t.toLowerCase().includes(needle));
+      if (has('assédio moral') || has('assedio moral')) return TipoDenuncia.ASSEDIO_MORAL;
+      if (has('falhas de gestão') || has('falhas de gestao') || has('injustiça') || has('injustica') || has('liderança') || has('lideranca')) {
+        return TipoDenuncia.ABUSO_AUTORIDADE;
+      }
+      if (has('conduta ética') || has('conduta etica') || has('assédio sexual') || has('assedio sexual') || has('discriminação') || has('discriminacao') || has('comportamento inadequado') || has('falta de respeito') || has('conflitos')) {
+        return TipoDenuncia.COMPORTAMENTO_INADEQUADO;
+      }
+      return TipoDenuncia.OUTROS;
+    })();
+
     await docRef('denuncias', denunciaId).set({
       id: denunciaId,
       gestorId: data.gestorId,
       autorId: null,
-      tipo: data.tipo,
+      tipo,
+      tipoManifestacao: data.tipoManifestacao,
+      temas: data.temas,
       descricao: data.descricao,
+      descricaoComplementar: data.descricaoComplementar,
+      frequencia: data.frequencia,
+      impacto: data.impacto,
+      envolvidos: data.envolvidos,
+      comunicada: data.comunicada,
+      desejaRetorno: data.desejaRetorno,
+      declaracao: data.declaracao,
       anonima: true,
       status: StatusDenuncia.PENDENTE,
       createdAt: now,
@@ -144,7 +175,7 @@ router.post('/', denunciaLimiter, async (req: AuthRequest, res: Response) => {
       await sendComplaintNotification({
         gestorSlackId: gestor.slackUserId || undefined,
         gestorNome: gestorUser?.nome || 'Gestor',
-        tipo: data.tipo,
+        tipo,
         denunciaId: denunciaId
       });
     } catch (slackError) {
@@ -153,7 +184,8 @@ router.post('/', denunciaLimiter, async (req: AuthRequest, res: Response) => {
 
     res.status(201).json({
       id: denunciaId,
-      tipo: data.tipo,
+      tipo,
+      tipoManifestacao: data.tipoManifestacao,
       status: StatusDenuncia.PENDENTE,
       createdAt: now,
       message: 'Denúncia registrada com sucesso. O RH será notificado.'

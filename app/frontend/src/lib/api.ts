@@ -75,12 +75,7 @@ export const avaliacoesAPI = {
 export const denunciasAPI = {
   list: (params?: { gestorId?: string; status?: string; tipo?: string; page?: number }) =>
     api.get('/denuncias', { params }),
-  create: (data: {
-    gestorId: string;
-    tipo: string;
-    descricao: string;
-    anonima: boolean;
-  }) => api.post('/denuncias', data),
+  create: (data: any) => api.post('/denuncias', data),
   updateStatus: (id: string, status: string) =>
     api.patch(`/denuncias/${id}/status`, { status }),
   stats: () => api.get('/denuncias/stats'),
