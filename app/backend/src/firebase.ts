@@ -14,6 +14,12 @@ type ServiceAccountFromEnv = {
   privateKey: string;
 };
 
+function getStorageBucketName(projectId: string): string {
+  const explicit = process.env.FIREBASE_STORAGE_BUCKET;
+  if (explicit) return explicit;
+  return `${projectId}.appspot.com`;
+}
+
 function getServiceAccountFromEnv(): ServiceAccountFromEnv {
   const json = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
   if (json) {
@@ -50,7 +56,8 @@ export function getFirebaseAdminApp() {
       projectId,
       clientEmail,
       privateKey
-    })
+    }),
+    storageBucket: getStorageBucketName(projectId)
   });
 
   return admin.app();

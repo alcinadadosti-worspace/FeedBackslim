@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
-import admin from 'firebase-admin';
+import { getStorage } from 'firebase-admin/storage';
 import { authenticateToken, AuthRequest } from '../middleware/auth.middleware';
 import { getFirebaseAdminApp } from '../firebase';
 
@@ -56,7 +56,7 @@ router.post('/', authenticateToken, upload.single('file'), async (req: AuthReque
       return res.status(400).json({ error: 'Nenhum arquivo enviado' });
     }
 
-    getFirebaseAdminApp();
+    const app = getFirebaseAdminApp();
     const bucketName = getStorageBucketName();
 
     const extFromMime: Record<string, string> = {
@@ -69,7 +69,7 @@ router.post('/', authenticateToken, upload.single('file'), async (req: AuthReque
     const filename = `${uuidv4()}${ext}`;
     const objectPath = `uploads/${filename}`;
 
-    const bucket = admin.storage().bucket(bucketName);
+    const bucket = getStorage(app).bucket(bucketName);
     const file = bucket.file(objectPath);
     await file.save(req.file.buffer, {
       contentType: req.file.mimetype,
@@ -93,21 +93,23 @@ router.post('/', authenticateToken, upload.single('file'), async (req: AuthReque
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Erro ao fazer upload' });
+    const message = error instanceof Error ? error.message : 'Erro ao fazer upload';
+    res.status(500).json({ error: message });
   }
 });
 
 // Deletar imagem
 router.delete('/:filename', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    getFirebaseAdminApp();
+    const app = getFirebaseAdminApp();
     const bucketName = getStorageBucketName();
-    const bucket = admin.storage().bucket(bucketName);
+    const bucket = getStorage(app).bucket(bucketName);
     const file = bucket.file(`uploads/${req.params.filename}`);
     await file.delete({ ignoreNotFound: true });
     res.json({ message: 'Arquivo deletado com sucesso' });
   } catch (error) {
-    res.status(500).json({ error: 'Erro ao deletar arquivo' });
+    const message = error instanceof Error ? error.message : 'Erro ao deletar arquivo';
+    res.status(500).json({ error: message });
   }
 });
 
