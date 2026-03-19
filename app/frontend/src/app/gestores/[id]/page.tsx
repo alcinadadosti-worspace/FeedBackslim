@@ -39,21 +39,21 @@ export default function GestorPerfilPage() {
 
   if (loading) {
     return (
-      <PublicLayout>
+      <SmartLayout>
         <div className="flex justify-center py-12">
           <Loading size="lg" />
         </div>
-      </PublicLayout>
+      </SmartLayout>
     );
   }
 
   if (!gestor) {
     return (
-      <PublicLayout>
+      <SmartLayout>
         <div className="text-center py-12">
           <p className="text-neutral-500">Gestor não encontrado</p>
         </div>
-      </PublicLayout>
+      </SmartLayout>
     );
   }
 
@@ -62,7 +62,7 @@ export default function GestorPerfilPage() {
   const criticas = gestor.avaliacoes?.filter((a: any) => a.critica) || [];
 
   return (
-    <PublicLayout>
+    <SmartLayout>
       <div className="max-w-5xl mx-auto">
         {/* Profile Header */}
         <Card className="mb-8">
@@ -219,6 +219,6 @@ export default function GestorPerfilPage() {
           </CardContent>
         </Card>
       </div>
-    </PublicLayout>
+    </SmartLayout>
   );
 }
