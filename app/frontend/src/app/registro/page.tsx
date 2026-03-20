@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import toast from 'react-hot-toast';
 import { Mail, Lock, User, ArrowRight } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
@@ -68,9 +69,7 @@ export default function RegistroPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-primary-500 border-3 border-neutral-900 shadow-brutal flex items-center justify-center">
-              <span className="font-bold text-2xl">O</span>
-            </div>
+            <Image src="/logo.png" alt="Ouvidoria" width={80} height={80} className="object-contain" />
             <span className="font-display font-bold text-3xl">Ouvidoria</span>
           </div>
           <p className="text-neutral-600 font-medium">

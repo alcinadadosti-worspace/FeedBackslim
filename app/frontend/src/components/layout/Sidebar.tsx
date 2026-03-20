@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import clsx from 'clsx';
 import {
   LayoutDashboard,
@@ -93,9 +94,7 @@ export function Sidebar() {
       {/* Logo */}
       <div className="p-6 border-b-3 border-neutral-900">
         <Link href="/dashboard" className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary-500 border-3 border-neutral-900 flex items-center justify-center">
-            <span className="font-bold text-lg">O</span>
-          </div>
+          <Image src="/logo.png" alt="Ouvidoria" width={48} height={48} className="object-contain" />
           <span className="font-display font-bold text-xl">Ouvidoria</span>
         </Link>
       </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { Star, AlertTriangle, Users, Shield } from 'lucide-react';
 
 export default function HomePage() {
@@ -10,9 +11,7 @@ export default function HomePage() {
       <header className="bg-white border-b-3 border-neutral-900 px-6 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-primary-500 border-3 border-neutral-900 flex items-center justify-center font-black text-white text-lg">
-              O
-            </div>
+            <Image src="/logo.png" alt="Ouvidoria" width={48} height={48} className="object-contain" />
             <span className="font-black text-2xl text-neutral-900">Ouvidoria</span>
           </div>
 
