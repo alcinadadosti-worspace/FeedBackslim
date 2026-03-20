@@ -16,7 +16,7 @@ const FRONTEND_URL = getPublicBaseUrl();
 
 function buildLoginRedirectUrl(nextPath: string): string {
   const next = nextPath.startsWith('/') ? nextPath : `/${nextPath}`;
-  return `${FRONTEND_URL}/login?next=${encodeURIComponent(next)}`;
+  return `${FRONTEND_URL}/login?switch=1&next=${encodeURIComponent(next)}`;
 }
 
 interface EvaluationNotificationParams {
