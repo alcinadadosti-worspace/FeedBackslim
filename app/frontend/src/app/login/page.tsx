@@ -38,6 +38,9 @@ export default function LoginPage() {
   }, [loadUser, logout]);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('switch') === '1') return;
+
     if (!authLoading && isAuthenticated) {
       const next = getNextPath();
       if (next) {
