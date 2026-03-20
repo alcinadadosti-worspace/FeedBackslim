@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { authenticateToken, AuthRequest, requireAdmin } from '../middleware/auth.middleware';
 import { Role, StatusDenuncia } from '../models';
 import { col, docRef, getManyByIds, normalizeFirestoreData, snapData } from '../firestoreRepo';
+import ExcelJS from 'exceljs';
 
 const router = Router();
 
@@ -293,9 +294,11 @@ router.get('/admin', authenticateToken, requireAdmin, async (req: AuthRequest, r
 // Exportar dados (admin)
 router.get('/export', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const { tipo, formato = 'json' } = req.query;
+    const { tipo, formato = 'xlsx' } = req.query;
 
-    let data: any;
+    let data: any[] = [];
+    let filename = `${tipo}_export`;
+    let sheetName = String(tipo || 'export');
 
     switch (tipo) {
       case 'avaliacoes':
@@ -303,20 +306,21 @@ router.get('/export', authenticateToken, requireAdmin, async (req: AuthRequest, 
           const snap = await col('avaliacoes').get();
           const avaliacoes = snap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
           const gestorIds = avaliacoes.map((a: any) => a.gestorId).filter(Boolean);
-          const autorIds = avaliacoes.map((a: any) => a.autorId).filter(Boolean);
           const gestoresById = await getManyByIds<any>('gestores', gestorIds);
           const gestorUserIds = Object.values(gestoresById).map((g: any) => (g as any).userId).filter(Boolean);
-          const usersById = await getManyByIds<any>('users', [...autorIds, ...gestorUserIds]);
+          const usersById = await getManyByIds<any>('users', gestorUserIds);
           data = avaliacoes.map((a: any) => {
             const gestor = gestoresById[a.gestorId];
             const gestorUser = gestor ? usersById[(gestor as any).userId] : undefined;
-            const autor = a.autorId ? usersById[a.autorId] : undefined;
             return {
-              ...a,
-              gestor: gestor ? { ...(gestor as any), user: gestorUser ? { nome: (gestorUser as any).nome } : null } : null,
-              autor: autor ? { nome: (autor as any).nome } : null
+              gestorNome: (gestorUser as any)?.nome || '',
+              nota: a.nota ?? null,
+              elogio: a.elogio ?? '',
+              publica: a.publica ?? null
             };
           });
+          filename = 'avaliacoes_export';
+          sheetName = 'Avaliacoes';
         }
         break;
       case 'denuncias':
@@ -331,50 +335,44 @@ router.get('/export', authenticateToken, requireAdmin, async (req: AuthRequest, 
             const gestor = gestoresById[d.gestorId];
             const gestorUser = gestor ? usersById[(gestor as any).userId] : undefined;
             return {
-              ...d,
-              gestor: gestor ? { ...(gestor as any), user: gestorUser ? { nome: (gestorUser as any).nome } : null } : null
+              gestorNome: (gestorUser as any)?.nome || '',
+              tipo: d.tipo ?? '',
+              tipoManifestacao: d.tipoManifestacao ?? '',
+              temas: Array.isArray(d.temas) ? d.temas.join(' | ') : '',
+              descricao: d.descricao ?? '',
+              descricaoComplementar: d.descricaoComplementar ?? '',
+              frequencia: d.frequencia ?? '',
+              impacto: d.impacto ?? '',
+              envolvidos: d.envolvidos ?? '',
+              comunicada: d.comunicada ?? '',
+              desejaRetorno: d.desejaRetorno ?? '',
+              declaracao: d.declaracao ?? null,
+              anonima: d.anonima ?? null,
+              status: d.status ?? ''
             };
           });
+          filename = 'denuncias_export';
+          sheetName = 'Denuncias';
         }
-        // Ocultar autor em denúncias anônimas
-        data = data.map((d: any) => ({
-          ...d,
-          autorId: d.anonima ? null : d.autorId
-        }));
         break;
       case 'gestores':
         {
           const gestoresSnap = await col('gestores').get();
           const gestores = gestoresSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
           const usersById = await getManyByIds<any>('users', gestores.map((g: any) => g.userId));
-          const badgesSnap = await col('badges').get();
-          const badgesByGestorId = badgesSnap.docs.reduce<Record<string, any[]>>((acc: Record<string, any[]>, d: any) => {
-            const b: any = normalizeFirestoreData(d.data());
-            const gestorId = b.gestorId;
-            if (!acc[gestorId]) acc[gestorId] = [];
-            acc[gestorId].push({ id: d.id, ...b });
-            return acc;
-          }, {});
-
-          const denunciasSnap = await col('denuncias').get();
-          const denuncias = denunciasSnap.docs.map((d: any) => normalizeFirestoreData(d.data()) as any);
-          const denunciasCountByGestorId = denuncias.reduce<Record<string, number>>((acc: Record<string, number>, d: any) => {
-            acc[d.gestorId] = (acc[d.gestorId] || 0) + 1;
-            return acc;
-          }, {});
-
           data = gestores.map((g: any) => {
             const user = usersById[g.userId];
+            const row: any = { ...g };
+            delete row.id;
+            delete row.foto;
+            delete row.userId;
             return {
-              ...g,
-              user: user ? { nome: (user as any).nome, email: (user as any).email } : null,
-              badges: badgesByGestorId[g.id] || [],
-              _count: {
-                avaliacoes: g.totalAvaliacoes ?? 0,
-                denuncias: denunciasCountByGestorId[g.id] || 0
-              }
+              gestorNome: (user as any)?.nome || '',
+              ...row
             };
           });
+          filename = 'gestores_export';
+          sheetName = 'Gestores';
         }
         break;
       default:
@@ -395,6 +393,36 @@ router.get('/export', authenticateToken, requireAdmin, async (req: AuthRequest, 
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', `attachment; filename=${tipo}_export.csv`);
       return res.send(csv);
+    }
+
+    if (formato === 'xlsx') {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet(sheetName);
+
+      if (data.length > 0) {
+        const keys = Object.keys(data[0]);
+        worksheet.columns = keys.map((key) => ({
+          header: key,
+          key,
+          width: Math.min(60, Math.max(12, key.length + 2))
+        }));
+        worksheet.addRows(
+          data.map((row: any) => {
+            const normalized: any = {};
+            for (const key of keys) {
+              const v = row[key];
+              normalized[key] = v instanceof Date ? v.toISOString() : v ?? '';
+            }
+            return normalized;
+          })
+        );
+        worksheet.getRow(1).font = { bold: true };
+      }
+
+      const buffer = (await workbook.xlsx.writeBuffer()) as ArrayBuffer;
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename=${filename}.xlsx`);
+      return res.send(Buffer.from(buffer));
     }
 
     res.json(data);

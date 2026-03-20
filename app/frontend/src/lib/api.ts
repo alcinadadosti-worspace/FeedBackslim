@@ -88,7 +88,10 @@ export const dashboardAPI = {
   gestor: () => api.get('/dashboard/gestor'),
   admin: (periodo?: number) => api.get('/dashboard/admin', { params: { periodo } }),
   export: (tipo: string, formato?: string) =>
-    api.get('/dashboard/export', { params: { tipo, formato } }),
+    api.get('/dashboard/export', {
+      params: { tipo, formato },
+      responseType: formato === 'xlsx' ? 'arraybuffer' : 'json'
+    }),
 };
 
 // Upload endpoint

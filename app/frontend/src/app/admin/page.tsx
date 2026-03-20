@@ -55,12 +55,14 @@ export default function AdminDashboardPage() {
 
   const handleExport = async (tipo: string) => {
     try {
-      const response = await dashboardAPI.export(tipo, 'csv');
-      const blob = new Blob([response.data], { type: 'text/csv' });
+      const response = await dashboardAPI.export(tipo, 'xlsx');
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${tipo}_export.csv`;
+      a.download = `${tipo}_export.xlsx`;
       a.click();
     } catch (error) {
       console.error('Erro ao exportar:', error);
