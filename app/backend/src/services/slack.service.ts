@@ -3,7 +3,16 @@ import { col, normalizeFirestoreData } from '../firestoreRepo';
 
 const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
 
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+function getPublicBaseUrl(): string {
+  const raw =
+    process.env.FRONTEND_URL ||
+    process.env.BACKEND_URL ||
+    process.env.RENDER_EXTERNAL_URL ||
+    'http://localhost:3000';
+  return raw.replace(/\/+$/, '');
+}
+
+const FRONTEND_URL = getPublicBaseUrl();
 
 interface EvaluationNotificationParams {
   slackUserId: string;
