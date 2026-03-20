@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Star, ThumbsUp, Lightbulb, AlertCircle, Send, Shield } from 'lucide-react';
+import { ArrowLeft, Star, ThumbsUp, Lightbulb, AlertCircle, Send, Shield, Ban } from 'lucide-react';
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { Card, CardTitle, CardContent } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
@@ -29,6 +29,7 @@ export default function AvaliarPage() {
   const [critica, setCritica] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [hasAlreadyEvaluated, setHasAlreadyEvaluated] = useState(false);
 
   useEffect(() => {
     loadGestores();
@@ -38,8 +39,11 @@ export default function AvaliarPage() {
     if (selectedGestorId) {
       const gestor = gestores.find((g) => g.id === selectedGestorId);
       setSelectedGestor(gestor);
+      const key = `ouvidoria_avaliou_${selectedGestorId}`;
+      setHasAlreadyEvaluated(!!localStorage.getItem(key));
     } else {
       setSelectedGestor(null);
+      setHasAlreadyEvaluated(false);
     }
   }, [selectedGestorId, gestores]);
 
@@ -78,6 +82,7 @@ export default function AvaliarPage() {
         critica: critica || undefined,
       });
 
+      localStorage.setItem(`ouvidoria_avaliou_${selectedGestorId}`, '1');
       toast.success('Avaliacao enviada com sucesso! Obrigado pelo seu feedback.');
       router.push('/');
     } catch (error: any) {
@@ -188,7 +193,7 @@ export default function AvaliarPage() {
                   />
                 </div>
 
-                {/* Info */}
+                {/* Info anonimato */}
                 <div className="p-4 bg-green-50 border-2 border-green-200 flex items-start gap-3">
                   <Shield className="w-5 h-5 text-green-600 mt-0.5" />
                   <p className="text-sm text-green-700">
@@ -197,8 +202,18 @@ export default function AvaliarPage() {
                   </p>
                 </div>
 
+                {/* Aviso de avaliação já enviada */}
+                {hasAlreadyEvaluated && (
+                  <div className="p-4 bg-orange-50 border-2 border-orange-400 flex items-start gap-3">
+                    <Ban className="w-5 h-5 text-orange-600 mt-0.5 shrink-0" />
+                    <p className="text-sm text-orange-700">
+                      <strong>Avaliação já enviada:</strong> Você já avaliou este gestor neste dispositivo. Só é permitida uma avaliação por gestor.
+                    </p>
+                  </div>
+                )}
+
                 {/* Submit */}
-                <Button type="submit" loading={submitting} className="w-full">
+                <Button type="submit" loading={submitting} disabled={hasAlreadyEvaluated} className="w-full">
                   <Send className="w-5 h-5" />
                   Enviar Avaliação
                 </Button>
