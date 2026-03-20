@@ -16,7 +16,7 @@ export default function HomePage() {
           </div>
 
           <Link
-            href="/login"
+            href="/login?switch=1"
             className="text-sm text-neutral-500 hover:text-neutral-700 transition-colors"
           >
             Acesso RH/Admin

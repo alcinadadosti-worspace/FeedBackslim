@@ -2,6 +2,7 @@
 
 import { ReactNode } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
@@ -21,7 +22,7 @@ export function PublicLayout({ children, showBackButton = true }: PublicLayoutPr
     if (isAuthenticated) {
       logout();
     }
-    router.push('/login');
+    router.push('/login?switch=1');
   };
 
   return (
@@ -34,9 +35,7 @@ export function PublicLayout({ children, showBackButton = true }: PublicLayoutPr
               <ArrowLeft className="w-5 h-5 text-neutral-600 group-hover:text-primary-500 transition-colors" />
             )}
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary-500 border-2 border-neutral-900 flex items-center justify-center font-black text-white text-sm">
-                O
-              </div>
+              <Image src="/logo.png" alt="Ouvidoria" width={40} height={40} className="object-contain" />
               <span className="font-black text-xl text-neutral-900">Ouvidoria</span>
             </div>
           </Link>
