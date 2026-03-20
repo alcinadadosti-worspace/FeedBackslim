@@ -14,6 +14,11 @@ function getPublicBaseUrl(): string {
 
 const FRONTEND_URL = getPublicBaseUrl();
 
+function buildLoginRedirectUrl(nextPath: string): string {
+  const next = nextPath.startsWith('/') ? nextPath : `/${nextPath}`;
+  return `${FRONTEND_URL}/login?next=${encodeURIComponent(next)}`;
+}
+
 interface EvaluationNotificationParams {
   slackUserId: string;
   gestorNome: string;
@@ -141,7 +146,7 @@ export async function sendEvaluationNotification(params: EvaluationNotificationP
                 text: 'Ver Avaliação',
                 emoji: true
               },
-              url: `${FRONTEND_URL}/avaliacoes/${avaliacaoId}`,
+              url: buildLoginRedirectUrl(`/dashboard/gestor?avaliacao=${avaliacaoId}`),
               style: 'primary'
             },
             {
@@ -151,7 +156,7 @@ export async function sendEvaluationNotification(params: EvaluationNotificationP
                 text: 'Abrir Dashboard',
                 emoji: true
               },
-              url: `${FRONTEND_URL}/dashboard/gestor`
+              url: buildLoginRedirectUrl('/dashboard/gestor')
             }
           ]
         },
@@ -269,7 +274,7 @@ export async function sendComplaintNotification(params: ComplaintNotificationPar
             text: 'Ver no Painel',
             emoji: true
           },
-          url: `${FRONTEND_URL}/admin/denuncias/${denunciaId}`,
+          url: buildLoginRedirectUrl(`/admin/denuncias?id=${denunciaId}`),
           style: 'danger'
         }
       ]

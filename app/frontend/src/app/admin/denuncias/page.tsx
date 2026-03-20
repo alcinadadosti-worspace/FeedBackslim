@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { ArrowLeft, AlertTriangle, Search, Filter, Eye, EyeOff } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -40,6 +41,7 @@ const statusColors: Record<string, string> = {
 };
 
 export default function AdminDenunciasPage() {
+  const searchParams = useSearchParams();
   const [denuncias, setDenuncias] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [tipo, setTipo] = useState('');
@@ -49,6 +51,19 @@ export default function AdminDenunciasPage() {
   useEffect(() => {
     loadDenuncias();
   }, [tipo, status]);
+
+  useEffect(() => {
+    const id = searchParams.get('id');
+    if (!id) return;
+    if (!denuncias.length) return;
+    const found = denuncias.find((d) => d.id === id);
+    if (!found) return;
+    setSelectedDenuncia(found);
+    setTimeout(() => {
+      const el = document.getElementById(`denuncia-${id}`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  }, [searchParams, denuncias]);
 
   const loadDenuncias = async () => {
     try {
@@ -126,6 +141,7 @@ export default function AdminDenunciasPage() {
             {denuncias.map((denuncia) => (
               <Card
                 key={denuncia.id}
+                id={`denuncia-${denuncia.id}`}
                 className={`cursor-pointer transition-all ${
                   selectedDenuncia?.id === denuncia.id ? 'ring-2 ring-primary-500' : ''
                 }`}

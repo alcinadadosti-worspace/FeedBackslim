@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { Mail, Lock, ArrowRight, ArrowLeft } from 'lucide-react';
@@ -12,10 +12,20 @@ import { Card } from '@/components/ui/Card';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login, logout, user, isAuthenticated, isLoading: authLoading, loadUser } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const getNextPath = () => {
+    const next = searchParams.get('next');
+    if (!next) return null;
+    if (!next.startsWith('/')) return null;
+    if (next.startsWith('//')) return null;
+    if (next.startsWith('/login')) return null;
+    return next;
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -29,6 +39,11 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
+      const next = getNextPath();
+      if (next) {
+        router.push(next);
+        return;
+      }
       const role = user?.role;
       if (role === 'RH_ADMIN') {
         router.push('/admin');
@@ -49,6 +64,11 @@ export default function LoginPage() {
     try {
       await login(email, password);
       toast.success('Login realizado com sucesso!');
+      const next = getNextPath();
+      if (next) {
+        router.push(next);
+        return;
+      }
       const role = useAuthStore.getState().user?.role;
       if (role === 'RH_ADMIN') {
         router.push('/admin');
