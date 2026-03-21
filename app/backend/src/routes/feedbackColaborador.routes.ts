@@ -1,12 +1,32 @@
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
+import crypto from 'crypto';
 import { avaliacaoLimiter } from '../middleware/rateLimit.middleware';
 import { col, docRef, normalizeFirestoreData, snapData } from '../firestoreRepo';
 import { sendCollaboratorFeedbackNotification } from '../services/slack.service';
 import { COLABORADORES } from '../data/colaboradores';
 
 const router = Router();
+
+function getBaseUrl(): string {
+  const raw =
+    process.env.FRONTEND_URL ||
+    process.env.BACKEND_URL ||
+    process.env.RENDER_EXTERNAL_URL ||
+    'http://localhost:3000';
+  return raw.replace(/\/+$/, '');
+}
+
+function generateToken(feedbackId: string, publica: boolean): string {
+  const secret = process.env.SLACK_BOT_TOKEN || 'fallback-secret';
+  return crypto.createHmac('sha256', secret).update(`${feedbackId}:${publica}`).digest('hex');
+}
+
+function buildAceitarUrl(feedbackId: string, publica: boolean): string {
+  const token = generateToken(feedbackId, publica);
+  return `${getBaseUrl()}/api/feedbacks/colaborador/${feedbackId}/aceitar?publica=${publica}&token=${token}`;
+}
 
 const createFeedbackSchema = z.object({
   colaboradorSlackId: z.string().min(1, 'ID do colaborador é obrigatório'),
@@ -52,7 +72,9 @@ router.post('/', avaliacaoLimiter, async (req: Request, res: Response) => {
         colaboradorNome: colaborador.nome,
         nota: data.nota,
         comentario,
-        feedbackId
+        feedbackId,
+        urlPublico: buildAceitarUrl(feedbackId, true),
+        urlPrivado: buildAceitarUrl(feedbackId, false)
       });
     } catch (slackError) {
       console.error('Erro ao enviar notificação Slack para colaborador:', slackError);
@@ -75,35 +97,50 @@ router.post('/', avaliacaoLimiter, async (req: Request, res: Response) => {
   }
 });
 
-// Atualizar visibilidade do feedback (chamado pelo slack-bot via secret interno)
-router.patch('/:id/publica', async (req: Request, res: Response) => {
-  const secret = req.headers['x-internal-secret'];
-  if (!secret || secret !== process.env.SLACK_BOT_TOKEN) {
-    return res.status(401).json({ error: 'Não autorizado' });
-  }
-
+// Aceitar/recusar visibilidade via link do Slack (GET com token HMAC)
+router.get('/:id/aceitar', async (req: Request, res: Response) => {
   try {
-    const body = z.object({ publica: z.boolean() }).parse(req.body);
-    const feedbackId = req.params.id;
+    const { id } = req.params;
+    const { publica: publicaStr, token } = req.query as { publica?: string; token?: string };
 
-    const feedbackSnap = await docRef('feedbacksColaborador', feedbackId).get();
+    if (!publicaStr || !token) {
+      return res.status(400).send(htmlPage('Link inválido', 'Os parâmetros necessários estão ausentes.', false));
+    }
+
+    const publica = publicaStr === 'true';
+    const expectedToken = generateToken(id, publica);
+
+    if (token !== expectedToken) {
+      return res.status(403).send(htmlPage('Link inválido', 'Este link não é válido ou já foi utilizado.', false));
+    }
+
+    const feedbackSnap = await docRef('feedbacksColaborador', id).get();
     const feedback = snapData<any>(feedbackSnap as any);
 
     if (!feedback) {
-      return res.status(404).json({ error: 'Feedback não encontrado' });
+      return res.status(404).send(htmlPage('Não encontrado', 'Este feedback não existe.', false));
     }
 
-    await docRef('feedbacksColaborador', feedbackId).set(
-      { publica: body.publica, updatedAt: new Date() },
+    await docRef('feedbacksColaborador', id).set(
+      { publica, updatedAt: new Date() },
       { merge: true }
     );
 
-    res.json({ id: feedbackId, publica: body.publica });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: error.errors[0].message });
+    if (publica) {
+      return res.send(htmlPage(
+        '✅ Feedback tornado público!',
+        'Seu feedback agora está visível no Pulse360. Obrigado por contribuir com a transparência!',
+        true
+      ));
+    } else {
+      return res.send(htmlPage(
+        '🔒 Feedback mantido privado.',
+        'Seu feedback ficará registrado internamente e não será exibido publicamente no site.',
+        true
+      ));
     }
-    res.status(500).json({ error: 'Erro ao atualizar visibilidade' });
+  } catch (error) {
+    res.status(500).send(htmlPage('Erro', 'Ocorreu um erro ao processar sua escolha.', false));
   }
 });
 
@@ -115,13 +152,13 @@ router.get('/ranking', async (req: Request, res: Response) => {
 
     const byColaborador: Record<string, { nome: string; total: number; soma: number }> = {};
     for (const f of feedbacks) {
-      const id = f.colaboradorSlackId;
-      if (!id) continue;
-      if (!byColaborador[id]) {
-        byColaborador[id] = { nome: f.colaboradorNome, total: 0, soma: 0 };
+      const slackId = f.colaboradorSlackId;
+      if (!slackId) continue;
+      if (!byColaborador[slackId]) {
+        byColaborador[slackId] = { nome: f.colaboradorNome, total: 0, soma: 0 };
       }
-      byColaborador[id].total++;
-      byColaborador[id].soma += Number(f.nota || 0);
+      byColaborador[slackId].total++;
+      byColaborador[slackId].soma += Number(f.nota || 0);
     }
 
     const ranking = Object.entries(byColaborador)
@@ -162,5 +199,36 @@ router.get('/publicos/:slackId', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Erro ao listar feedbacks' });
   }
 });
+
+function htmlPage(title: string, message: string, success: boolean): string {
+  const color = success ? '#16a34a' : '#dc2626';
+  const bg = success ? '#f0fdf4' : '#fef2f2';
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pulse360 - ${title}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+    .card { background: white; border: 2px solid #171717; padding: 40px; max-width: 480px; width: 90%; text-align: center; box-shadow: 4px 4px 0 #171717; }
+    .icon { font-size: 48px; margin-bottom: 16px; }
+    h1 { font-size: 22px; color: #171717; margin: 0 0 12px; }
+    p { color: #525252; margin: 0 0 24px; line-height: 1.5; }
+    .badge { display: inline-block; padding: 6px 16px; background: ${bg}; border: 2px solid ${color}; color: ${color}; font-weight: 600; font-size: 13px; }
+    .brand { margin-top: 24px; font-size: 12px; color: #a3a3a3; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">${success ? '✅' : '⚠️'}</div>
+    <h1>${title}</h1>
+    <p>${message}</p>
+    <span class="badge">Pulse360</span>
+    <p class="brand">Plataforma de Feedback</p>
+  </div>
+</body>
+</html>`;
+}
 
 export default router;

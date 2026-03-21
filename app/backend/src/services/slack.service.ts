@@ -299,6 +299,8 @@ interface CollaboratorFeedbackNotificationParams {
   nota: number;
   comentario: string;
   feedbackId: string;
+  urlPublico: string;
+  urlPrivado: string;
 }
 
 // Enviar notificação de feedback para colaborador com botões interativos
@@ -309,7 +311,7 @@ export async function sendCollaboratorFeedbackNotification(params: CollaboratorF
   }
 
   try {
-    const { slackUserId, colaboradorNome, nota, comentario, feedbackId } = params;
+    const { slackUserId, colaboradorNome, nota, comentario, feedbackId, urlPublico, urlPrivado } = params;
     const testId = getTestSlackUserId();
 
     const message = {
@@ -375,24 +377,22 @@ export async function sendCollaboratorFeedbackNotification(params: CollaboratorF
           elements: [
             {
               type: 'button',
-              action_id: 'feedback_col_publico',
               text: {
                 type: 'plain_text',
                 text: '✅ Tornar Público',
                 emoji: true
               },
-              value: feedbackId,
+              url: urlPublico,
               style: 'primary'
             },
             {
               type: 'button',
-              action_id: 'feedback_col_privado',
               text: {
                 type: 'plain_text',
                 text: '🔒 Manter Privado',
                 emoji: true
               },
-              value: feedbackId
+              url: urlPrivado
             }
           ]
         },
