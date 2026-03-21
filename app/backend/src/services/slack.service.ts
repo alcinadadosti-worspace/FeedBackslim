@@ -93,7 +93,7 @@ export async function sendEvaluationNotification(params: EvaluationNotificationP
 
     const message = {
       channel: testId || slackUserId,
-      text: `Você recebeu uma nova avaliação no Pulse360`,
+      text: `Você recebeu uma nova avaliação no Ouvidoria`,
       blocks: [
         {
           type: 'header',
@@ -116,7 +116,7 @@ export async function sendEvaluationNotification(params: EvaluationNotificationP
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `Olá *${gestorNome}*! Você recebeu uma nova avaliação no Pulse360.`
+            text: `Olá *${gestorNome}*! Você recebeu uma nova avaliação no Ouvidoria.`
           }
         },
         {
@@ -168,7 +168,7 @@ export async function sendEvaluationNotification(params: EvaluationNotificationP
           elements: [
             {
               type: 'mrkdwn',
-              text: '📊 Pulse360 - Plataforma de Feedback'
+              text: '📊 Ouvidoria - Plataforma de Feedback'
             }
           ]
         }
@@ -304,7 +304,7 @@ export async function sendComplaintNotification(params: ComplaintNotificationPar
     for (const channel of recipients) {
       await slack.chat.postMessage({
         channel,
-        text: `Nova manifestação registrada na ouvidoria do Pulse360`,
+        text: `Nova manifestação registrada na ouvidoria do Ouvidoria`,
         blocks
       });
     }
@@ -337,7 +337,7 @@ export async function sendCollaboratorFeedbackNotification(params: CollaboratorF
 
     const message = {
       channel: testId || slackUserId,
-      text: `Você recebeu um novo feedback no Pulse360`,
+      text: `Você recebeu um novo feedback no Ouvidoria`,
       blocks: [
         {
           type: 'header',
@@ -390,7 +390,7 @@ export async function sendCollaboratorFeedbackNotification(params: CollaboratorF
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: '*Deseja tornar este feedback público no site Pulse360?*\nSe aceitar, o feedback ficará visível na plataforma (de forma anônima). Se recusar, ficará apenas registrado internamente.'
+            text: '*Deseja tornar este feedback público no site Ouvidoria?*\nSe aceitar, o feedback ficará visível na plataforma (de forma anônima). Se recusar, ficará apenas registrado internamente.'
           }
         },
         {
@@ -422,7 +422,7 @@ export async function sendCollaboratorFeedbackNotification(params: CollaboratorF
           elements: [
             {
               type: 'mrkdwn',
-              text: '📊 Pulse360 - Plataforma de Feedback'
+              text: '📊 Ouvidoria - Plataforma de Feedback'
             }
           ]
         }

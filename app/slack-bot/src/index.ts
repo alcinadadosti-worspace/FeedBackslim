@@ -28,13 +28,13 @@ app.action('feedback_col_publico', async ({ action, ack, respond }) => {
     );
     await respond({
       replace_original: true,
-      text: '✅ Feedback marcado como público no Pulse360. Obrigado!',
+      text: '✅ Feedback marcado como público no Ouvidoria. Obrigado!',
       blocks: [
         {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: '✅ *Feedback tornado público!* Ele agora está visível na plataforma Pulse360. Obrigado por contribuir com a transparência!'
+            text: '✅ *Feedback tornado público!* Ele agora está visível na plataforma Ouvidoria. Obrigado por contribuir com a transparência!'
           }
         }
       ]
@@ -79,7 +79,7 @@ app.command('/pulse360', async ({ command, ack, respond }) => {
   await ack();
 
   const helpText = `
-*Pulse360 - Plataforma de Feedback*
+*Ouvidoria - Plataforma de Feedback*
 
 Comandos disponíveis:
 • \`/pulse360 help\` - Mostra esta ajuda
@@ -102,14 +102,14 @@ Para mais informações, acesse ${process.env.FRONTEND_URL || 'http://localhost:
 
     case 'status':
       await respond({
-        text: ':white_check_mark: Pulse360 está conectado e funcionando!',
+        text: ':white_check_mark: Ouvidoria está conectado e funcionando!',
         response_type: 'ephemeral',
       });
       break;
 
     case 'link':
       await respond({
-        text: `:link: Acesse o Pulse360: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`,
+        text: `:link: Acesse o Ouvidoria: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`,
         response_type: 'ephemeral',
       });
       break;
@@ -125,7 +125,7 @@ Para mais informações, acesse ${process.env.FRONTEND_URL || 'http://localhost:
 // Evento de menção ao bot
 app.event('app_mention', async ({ event, say }) => {
   await say({
-    text: `Olá <@${event.user}>! Sou o bot do Pulse360. Use o comando \`/pulse360 help\` para ver o que posso fazer.`,
+    text: `Olá <@${event.user}>! Sou o bot do Ouvidoria. Use o comando \`/pulse360 help\` para ver o que posso fazer.`,
     thread_ts: event.ts,
   });
 });
@@ -138,7 +138,7 @@ app.event('message', async ({ event, say }) => {
   // Responder apenas em DMs
   if ((event as any).channel_type === 'im') {
     await say({
-      text: `Olá! Sou o bot do Pulse360.\n\n:bell: Você receberá notificações aqui quando:\n• Receber uma nova avaliação\n• Houver uma comunicação na ouvidoria sobre você\n\nPara acessar a plataforma: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`,
+      text: `Olá! Sou o bot do Ouvidoria.\n\n:bell: Você receberá notificações aqui quando:\n• Receber uma nova avaliação\n• Houver uma comunicação na ouvidoria sobre você\n\nPara acessar a plataforma: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`,
     });
   }
 });
@@ -156,7 +156,7 @@ export async function sendEvaluationNotification(params: {
   try {
     await app.client.chat.postMessage({
       channel: slackUserId,
-      text: `Você recebeu uma nova avaliação no Pulse360`,
+      text: `Você recebeu uma nova avaliação no Ouvidoria`,
       blocks: [
         {
           type: 'header',
@@ -170,7 +170,7 @@ export async function sendEvaluationNotification(params: {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `Olá *${gestorNome}*! Você recebeu uma nova avaliação no Pulse360.`,
+            text: `Olá *${gestorNome}*! Você recebeu uma nova avaliação no Ouvidoria.`,
           },
         },
         {
@@ -254,7 +254,7 @@ export async function sendComplaintNotification(params: {
     // Notificação para o canal do RH
     await app.client.chat.postMessage({
       channel: rhChannelId,
-      text: `Nova denúncia registrada na ouvidoria do Pulse360`,
+      text: `Nova denúncia registrada na ouvidoria do Ouvidoria`,
       blocks: [
         {
           type: 'header',
@@ -268,7 +268,7 @@ export async function sendComplaintNotification(params: {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `Uma nova denúncia foi registrada na ouvidoria do Pulse360.`,
+            text: `Uma nova denúncia foi registrada na ouvidoria do Ouvidoria.`,
           },
         },
         {
@@ -314,7 +314,7 @@ export async function sendComplaintNotification(params: {
     if (gestorSlackId) {
       await app.client.chat.postMessage({
         channel: gestorSlackId,
-        text: `Uma nova comunicação foi registrada sobre sua gestão no Pulse360. O RH entrará em contato se necessário.`,
+        text: `Uma nova comunicação foi registrada sobre sua gestão no Ouvidoria. O RH entrará em contato se necessário.`,
       });
     }
 
@@ -329,5 +329,5 @@ export async function sendComplaintNotification(params: {
 (async () => {
   const port = process.env.PORT || 3002;
   await app.start(port);
-  console.log(`⚡️ Pulse360 Slack Bot está rodando na porta ${port}!`);
+  console.log(`⚡️ Ouvidoria Slack Bot está rodando na porta ${port}!`);
 })();

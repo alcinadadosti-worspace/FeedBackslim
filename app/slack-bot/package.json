@@ -1,7 +1,7 @@
 {
   "name": "pulse360-slack-bot",
   "version": "1.0.0",
-  "description": "Slack Bot for Pulse360 notifications",
+  "description": "Slack Bot for Ouvidoria notifications",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",

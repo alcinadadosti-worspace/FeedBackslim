@@ -129,7 +129,7 @@ router.get('/:id/aceitar', async (req: Request, res: Response) => {
     if (publica) {
       return res.send(htmlPage(
         '✅ Feedback tornado público!',
-        'Seu feedback agora está visível no Pulse360. Obrigado por contribuir com a transparência!',
+        'Seu feedback agora está visível no Ouvidoria. Obrigado por contribuir com a transparência!',
         true
       ));
     } else {
@@ -226,7 +226,7 @@ function htmlPage(title: string, message: string, success: boolean): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pulse360 - ${title}</title>
+  <title>Ouvidoria - ${title}</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
     .card { background: white; border: 2px solid #171717; padding: 40px; max-width: 480px; width: 90%; text-align: center; box-shadow: 4px 4px 0 #171717; }
@@ -242,7 +242,7 @@ function htmlPage(title: string, message: string, success: boolean): string {
     <div class="icon">${success ? '✅' : '⚠️'}</div>
     <h1>${title}</h1>
     <p>${message}</p>
-    <span class="badge">Pulse360</span>
+    <span class="badge">Ouvidoria</span>
     <p class="brand">Plataforma de Feedback</p>
   </div>
 </body>
