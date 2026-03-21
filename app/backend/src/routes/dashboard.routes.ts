@@ -169,15 +169,16 @@ router.get('/admin', authenticateToken, requireAdmin, async (req: AuthRequest, r
     const [
       totalUsers,
       totalGestores,
-      totalAvaliacoes,
+      avaliacoesSnap,
       totalDenuncias,
-      denunciasPendentes
+      denunciasPendentes,
+      totalFeedbacksColaboradores
     ] = await Promise.all([
       col('users').get().then((s: any) => s.size),
       col('gestores').get().then((s: any) => s.size),
       (fromDate
-        ? col('avaliacoes').where('createdAt', '>=', fromDate).get().then((s: any) => s.size)
-        : col('avaliacoes').get().then((s: any) => s.size)),
+        ? col('avaliacoes').where('createdAt', '>=', fromDate).get()
+        : col('avaliacoes').get()),
       (fromDate
         ? col('denuncias').where('createdAt', '>=', fromDate).get().then((s: any) => s.size)
         : col('denuncias').get().then((s: any) => s.size)),
@@ -191,8 +192,15 @@ router.get('/admin', authenticateToken, requireAdmin, async (req: AuthRequest, r
         : col('denuncias')
             .where('status', '==', StatusDenuncia.PENDENTE)
             .get()
-            .then((s: any) => s.size))
+            .then((s: any) => s.size)),
+      col('feedbacksColaborador').get().then((s: any) => s.size)
     ]);
+
+    const totalAvaliacoes = avaliacoesSnap.size;
+    const notasAvaliacoes = avaliacoesSnap.docs.map((d: any) => (normalizeFirestoreData(d.data()) as any).nota).filter((n: any) => typeof n === 'number');
+    const mediaGeralAvaliacoes = notasAvaliacoes.length > 0
+      ? Number((notasAvaliacoes.reduce((a: number, b: number) => a + b, 0) / notasAvaliacoes.length).toFixed(1))
+      : 0;
 
     // Top gestores
     const topGestoresSnap = await col('gestores').where('totalAvaliacoes', '>=', 1).get();
@@ -277,8 +285,10 @@ router.get('/admin', authenticateToken, requireAdmin, async (req: AuthRequest, r
         totalUsers,
         totalGestores,
         totalAvaliacoes,
+        mediaGeralAvaliacoes,
         totalDenuncias,
-        denunciasPendentes
+        denunciasPendentes,
+        totalFeedbacksColaboradores
       },
       topGestores,
       gestoresDenunciados,

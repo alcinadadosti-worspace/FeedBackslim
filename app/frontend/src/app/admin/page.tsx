@@ -6,10 +6,11 @@ import {
   Users,
   Star,
   AlertTriangle,
-  TrendingUp,
   Download,
   ArrowRight,
   BarChart3,
+  MessageSquare,
+  Clock,
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardTitle, CardContent } from '@/components/ui/Card';
@@ -112,54 +113,60 @@ export default function AdminDashboardPage() {
         ) : (
           <>
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-8">
               <Card className="bg-blue-50">
-                <div className="flex items-center gap-3">
-                  <Users className="w-8 h-8 text-blue-600" />
-                  <div>
-                    <p className="text-2xl font-bold text-neutral-900">{data?.stats?.totalUsers || 0}</p>
-                    <p className="text-sm text-neutral-600">Usuários</p>
-                  </div>
+                <div className="flex flex-col gap-1">
+                  <Users className="w-6 h-6 text-blue-600" />
+                  <p className="text-2xl font-bold text-neutral-900">{data?.stats?.totalUsers || 0}</p>
+                  <p className="text-xs text-neutral-600">Usuários</p>
                 </div>
               </Card>
 
               <Card className="bg-primary-50">
-                <div className="flex items-center gap-3">
-                  <Users className="w-8 h-8 text-primary-600" />
-                  <div>
-                    <p className="text-2xl font-bold text-neutral-900">{data?.stats?.totalGestores || 0}</p>
-                    <p className="text-sm text-neutral-600">Gestores</p>
-                  </div>
+                <div className="flex flex-col gap-1">
+                  <Users className="w-6 h-6 text-primary-600" />
+                  <p className="text-2xl font-bold text-neutral-900">{data?.stats?.totalGestores || 0}</p>
+                  <p className="text-xs text-neutral-600">Gestores</p>
                 </div>
               </Card>
 
               <Card className="bg-gold-50">
-                <div className="flex items-center gap-3">
-                  <Star className="w-8 h-8 text-gold-600" />
-                  <div>
-                    <p className="text-2xl font-bold text-neutral-900">{data?.stats?.totalAvaliacoes || 0}</p>
-                    <p className="text-sm text-neutral-600">Avaliações</p>
-                  </div>
+                <div className="flex flex-col gap-1">
+                  <Star className="w-6 h-6 text-gold-600" />
+                  <p className="text-2xl font-bold text-neutral-900">{data?.stats?.totalAvaliacoes || 0}</p>
+                  <p className="text-xs text-neutral-600">Avaliações</p>
+                </div>
+              </Card>
+
+              <Card className="bg-yellow-50">
+                <div className="flex flex-col gap-1">
+                  <BarChart3 className="w-6 h-6 text-yellow-600" />
+                  <p className="text-2xl font-bold text-neutral-900">{data?.stats?.mediaGeralAvaliacoes ?? '—'}</p>
+                  <p className="text-xs text-neutral-600">Média Geral</p>
+                </div>
+              </Card>
+
+              <Card className="bg-purple-50">
+                <div className="flex flex-col gap-1">
+                  <MessageSquare className="w-6 h-6 text-purple-600" />
+                  <p className="text-2xl font-bold text-neutral-900">{data?.stats?.totalFeedbacksColaboradores || 0}</p>
+                  <p className="text-xs text-neutral-600">Feedbacks Col.</p>
                 </div>
               </Card>
 
               <Card className="bg-red-50">
-                <div className="flex items-center gap-3">
-                  <AlertTriangle className="w-8 h-8 text-red-600" />
-                  <div>
-                    <p className="text-2xl font-bold text-neutral-900">{data?.stats?.totalDenuncias || 0}</p>
-                    <p className="text-sm text-neutral-600">Denúncias</p>
-                  </div>
+                <div className="flex flex-col gap-1">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                  <p className="text-2xl font-bold text-neutral-900">{data?.stats?.totalDenuncias || 0}</p>
+                  <p className="text-xs text-neutral-600">Denúncias</p>
                 </div>
               </Card>
 
               <Card className="bg-orange-50">
-                <div className="flex items-center gap-3">
-                  <AlertTriangle className="w-8 h-8 text-orange-600" />
-                  <div>
-                    <p className="text-2xl font-bold text-neutral-900">{data?.stats?.denunciasPendentes || 0}</p>
-                    <p className="text-sm text-neutral-600">Pendentes</p>
-                  </div>
+                <div className="flex flex-col gap-1">
+                  <Clock className="w-6 h-6 text-orange-600" />
+                  <p className="text-2xl font-bold text-neutral-900">{data?.stats?.denunciasPendentes || 0}</p>
+                  <p className="text-xs text-neutral-600">Pendentes</p>
                 </div>
               </Card>
             </div>
@@ -269,8 +276,7 @@ export default function AdminDashboardPage() {
                           <SimpleRating value={avaliacao.nota} size="sm" />
                         </div>
                         <p className="text-xs text-neutral-500">
-                          Por {avaliacao.autor?.nome} em{' '}
-                          {format(new Date(avaliacao.createdAt), 'dd/MM/yyyy', { locale: ptBR })}
+                          Anônimo · {format(new Date(avaliacao.createdAt), 'dd/MM/yyyy', { locale: ptBR })}
                         </p>
                       </div>
                     ))}
