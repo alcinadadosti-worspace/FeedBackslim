@@ -79,34 +79,42 @@ export default function HomePage() {
           </div>
 
           {/* Secondary Links */}
-          <div className="flex flex-wrap justify-center gap-6 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Link
               href="/gestores"
-              className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 transition-colors"
+              className="group flex flex-col items-center gap-2 p-4 bg-white border-3 border-neutral-900 shadow-brutal transition-all duration-150 hover:shadow-brutal-hover hover:-translate-x-1 hover:-translate-y-1"
             >
-              <Users className="w-4 h-4" />
-              <span>Ver gestores</span>
+              <div className="w-10 h-10 bg-blue-100 border-2 border-neutral-900 flex items-center justify-center">
+                <Users className="w-5 h-5 text-blue-600" />
+              </div>
+              <span className="text-sm font-bold text-neutral-900">Ver Gestores</span>
             </Link>
             <Link
               href="/ranking"
-              className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 transition-colors"
+              className="group flex flex-col items-center gap-2 p-4 bg-white border-3 border-neutral-900 shadow-brutal transition-all duration-150 hover:shadow-brutal-hover hover:-translate-x-1 hover:-translate-y-1"
             >
-              <Star className="w-4 h-4" />
-              <span>Ranking</span>
+              <div className="w-10 h-10 bg-yellow-100 border-2 border-neutral-900 flex items-center justify-center">
+                <Star className="w-5 h-5 text-yellow-600" />
+              </div>
+              <span className="text-sm font-bold text-neutral-900">Ranking</span>
             </Link>
             <Link
               href="/feedbacks"
-              className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 transition-colors"
+              className="group flex flex-col items-center gap-2 p-4 bg-white border-3 border-neutral-900 shadow-brutal transition-all duration-150 hover:shadow-brutal-hover hover:-translate-x-1 hover:-translate-y-1"
             >
-              <MessageSquare className="w-4 h-4" />
-              <span>Feedbacks públicos</span>
+              <div className="w-10 h-10 bg-purple-100 border-2 border-neutral-900 flex items-center justify-center">
+                <MessageSquare className="w-5 h-5 text-purple-600" />
+              </div>
+              <span className="text-sm font-bold text-neutral-900">Feedbacks Públicos</span>
             </Link>
             <Link
               href="/consultar-denuncia"
-              className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 transition-colors"
+              className="group flex flex-col items-center gap-2 p-4 bg-white border-3 border-neutral-900 shadow-brutal transition-all duration-150 hover:shadow-brutal-hover hover:-translate-x-1 hover:-translate-y-1"
             >
-              <Search className="w-4 h-4" />
-              <span>Consultar denúncia</span>
+              <div className="w-10 h-10 bg-orange-100 border-2 border-neutral-900 flex items-center justify-center">
+                <Search className="w-5 h-5 text-orange-600" />
+              </div>
+              <span className="text-sm font-bold text-neutral-900">Consultar Denúncia</span>
             </Link>
           </div>
 
