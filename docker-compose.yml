@@ -6,7 +6,7 @@ services:
     build:
       context: ./app/backend
       dockerfile: Dockerfile
-    container_name: pulse360-backend
+    container_name: ouvidoria-backend
     restart: unless-stopped
     environment:
       FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON:-}
@@ -24,7 +24,7 @@ services:
     volumes:
       - backend_uploads:/app/uploads
     networks:
-      - pulse360-network
+      - ouvidoria-network
 
   # Frontend Web App
   frontend:
@@ -33,7 +33,7 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001/api}
-    container_name: pulse360-frontend
+    container_name: ouvidoria-frontend
     restart: unless-stopped
     depends_on:
       - backend
@@ -42,14 +42,14 @@ services:
     ports:
       - "3000:3000"
     networks:
-      - pulse360-network
+      - ouvidoria-network
 
   # Slack Bot (optional)
   slack-bot:
     build:
       context: ./app/slack-bot
       dockerfile: Dockerfile
-    container_name: pulse360-slack-bot
+    container_name: ouvidoria-slack-bot
     restart: unless-stopped
     profiles:
       - slack
@@ -65,11 +65,11 @@ services:
     ports:
       - "3002:3002"
     networks:
-      - pulse360-network
+      - ouvidoria-network
 
 volumes:
   backend_uploads:
 
 networks:
-  pulse360-network:
+  ouvidoria-network:
     driver: bridge

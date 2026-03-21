@@ -74,17 +74,17 @@ app.action('feedback_col_privado', async ({ action, ack, respond }) => {
   }
 });
 
-// Comando /pulse360
-app.command('/pulse360', async ({ command, ack, respond }) => {
+// Comando /ouvidoria
+app.command('/ouvidoria', async ({ command, ack, respond }) => {
   await ack();
 
   const helpText = `
 *Ouvidoria - Plataforma de Feedback*
 
 Comandos disponíveis:
-• \`/pulse360 help\` - Mostra esta ajuda
-• \`/pulse360 status\` - Verifica o status da integração
-• \`/pulse360 link\` - Obtém o link para acessar a plataforma
+• \`/ouvidoria help\` - Mostra esta ajuda
+• \`/ouvidoria status\` - Verifica o status da integração
+• \`/ouvidoria link\` - Obtém o link para acessar a plataforma
 
 Para mais informações, acesse ${process.env.FRONTEND_URL || 'http://localhost:3000'}
   `;
@@ -116,7 +116,7 @@ Para mais informações, acesse ${process.env.FRONTEND_URL || 'http://localhost:
 
     default:
       await respond({
-        text: `Comando desconhecido. Use \`/pulse360 help\` para ver os comandos disponíveis.`,
+        text: `Comando desconhecido. Use \`/ouvidoria help\` para ver os comandos disponíveis.`,
         response_type: 'ephemeral',
       });
   }
@@ -125,7 +125,7 @@ Para mais informações, acesse ${process.env.FRONTEND_URL || 'http://localhost:
 // Evento de menção ao bot
 app.event('app_mention', async ({ event, say }) => {
   await say({
-    text: `Olá <@${event.user}>! Sou o bot do Ouvidoria. Use o comando \`/pulse360 help\` para ver o que posso fazer.`,
+    text: `Olá <@${event.user}>! Sou o bot do Ouvidoria. Use o comando \`/ouvidoria help\` para ver o que posso fazer.`,
     thread_ts: event.ts,
   });
 });

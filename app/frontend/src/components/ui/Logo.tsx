@@ -16,7 +16,7 @@ export function LogoMark({ size = 'md', className }: { size?: LogoSize; classNam
       className={clsx(sizeMap[size], className)}
     >
       <defs>
-        <linearGradient id="pulse360_gold" x1="30" y1="40" x2="220" y2="220" gradientUnits="userSpaceOnUse">
+        <linearGradient id="ouvidoria_gold" x1="30" y1="40" x2="220" y2="220" gradientUnits="userSpaceOnUse">
           <stop offset="0" stopColor="#f7d889" />
           <stop offset="1" stopColor="#b8842a" />
         </linearGradient>
@@ -25,7 +25,7 @@ export function LogoMark({ size = 'md', className }: { size?: LogoSize; classNam
       <path
         d="M52 148c-18-16-26-33-26-52 0-34 30-56 70-52 28 3 48 18 58 39"
         fill="none"
-        stroke="url(#pulse360_gold)"
+        stroke="url(#ouvidoria_gold)"
         strokeWidth="10"
         strokeLinecap="round"
       />
@@ -33,7 +33,7 @@ export function LogoMark({ size = 'md', className }: { size?: LogoSize; classNam
       <path
         d="M98 194L140 54l42 140"
         fill="none"
-        stroke="url(#pulse360_gold)"
+        stroke="url(#ouvidoria_gold)"
         strokeWidth="12"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -42,7 +42,7 @@ export function LogoMark({ size = 'md', className }: { size?: LogoSize; classNam
       <path
         d="M178 194l28-70 28 70"
         fill="none"
-        stroke="url(#pulse360_gold)"
+        stroke="url(#ouvidoria_gold)"
         strokeWidth="12"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -51,7 +51,7 @@ export function LogoMark({ size = 'md', className }: { size?: LogoSize; classNam
       <path
         d="M170 162c16-10 36-10 52 0"
         fill="none"
-        stroke="url(#pulse360_gold)"
+        stroke="url(#ouvidoria_gold)"
         strokeWidth="10"
         strokeLinecap="round"
       />
@@ -59,7 +59,7 @@ export function LogoMark({ size = 'md', className }: { size?: LogoSize; classNam
       <path
         d="M160 166c-8 6-12 16-12 28v22h80v-22c0-14-6-26-16-34"
         fill="none"
-        stroke="url(#pulse360_gold)"
+        stroke="url(#ouvidoria_gold)"
         strokeWidth="10"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -68,7 +68,7 @@ export function LogoMark({ size = 'md', className }: { size?: LogoSize; classNam
       <path
         d="M148 190h-10c-6 0-10-4-10-10v-16c0-6 4-10 10-10h10"
         fill="none"
-        stroke="url(#pulse360_gold)"
+        stroke="url(#ouvidoria_gold)"
         strokeWidth="10"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -77,7 +77,7 @@ export function LogoMark({ size = 'md', className }: { size?: LogoSize; classNam
       <path
         d="M246 190h-14c-6 0-10-4-10-10v-16c0-6 4-10 10-10h14"
         fill="none"
-        stroke="url(#pulse360_gold)"
+        stroke="url(#ouvidoria_gold)"
         strokeWidth="10"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -86,7 +86,7 @@ export function LogoMark({ size = 'md', className }: { size?: LogoSize; classNam
       <path
         d="M222 150v56"
         fill="none"
-        stroke="url(#pulse360_gold)"
+        stroke="url(#ouvidoria_gold)"
         strokeWidth="10"
         strokeLinecap="round"
       />
@@ -94,15 +94,15 @@ export function LogoMark({ size = 'md', className }: { size?: LogoSize; classNam
       <path
         d="M206 150v44"
         fill="none"
-        stroke="url(#pulse360_gold)"
+        stroke="url(#ouvidoria_gold)"
         strokeWidth="10"
         strokeLinecap="round"
       />
 
       <path
         d="M192 188h22c6 0 10 4 10 10v12l-16-12h-16c-6 0-10-4-10-10s4-10 10-10z"
-        fill="url(#pulse360_gold)"
-        stroke="url(#pulse360_gold)"
+        fill="url(#ouvidoria_gold)"
+        stroke="url(#ouvidoria_gold)"
         strokeWidth="2"
       />
 

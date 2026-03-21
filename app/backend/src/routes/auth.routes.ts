@@ -80,7 +80,7 @@ router.post('/register', async (req: Request, res: Response) => {
 
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET || 'pulse360-secret',
+      process.env.JWT_SECRET || 'ouvidoria-secret',
       { expiresIn: '7d' }
     );
 
@@ -115,7 +115,7 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
 
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET || 'pulse360-secret',
+      process.env.JWT_SECRET || 'ouvidoria-secret',
       { expiresIn: '7d' }
     );
 

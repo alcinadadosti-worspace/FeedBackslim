@@ -1,12 +1,12 @@
-# Pulse360
+# Ouvidoria
 
-![Pulse360](https://img.shields.io/badge/Pulse360-Feedback%20Platform-98d4a0?style=for-the-badge)
+![Ouvidoria](https://img.shields.io/badge/Ouvidoria-Feedback%20Platform-98d4a0?style=for-the-badge)
 ![Next.js](https://img.shields.io/badge/Next.js-14-black?style=flat-square&logo=next.js)
 ![Node.js](https://img.shields.io/badge/Node.js-20-green?style=flat-square&logo=node.js)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue?style=flat-square&logo=postgresql)
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker)
 
-**Pulse360** é uma plataforma interna para colaboradores avaliarem gestores, dando feedbacks, notas e realizando denúncias confidenciais através de uma ouvidoria integrada.
+**Ouvidoria** é uma plataforma interna para colaboradores avaliarem gestores, dando feedbacks, notas e realizando denúncias confidenciais através de uma ouvidoria integrada.
 
 ## Funcionalidades
 
@@ -174,7 +174,7 @@ docker-compose exec backend npx tsx prisma/seed.ts
 1. Acesse [api.slack.com/apps](https://api.slack.com/apps)
 2. Clique em "Create New App"
 3. Escolha "From scratch"
-4. Nome: `Pulse360` | Workspace: Seu workspace
+4. Nome: `Ouvidoria` | Workspace: Seu workspace
 
 ### 2. Configurar Permissões
 
@@ -323,4 +323,4 @@ Este projeto é privado e de uso interno.
 
 ---
 
-Desenvolvido com por **Pulse360 Team**
+Desenvolvido com por **Ouvidoria Team**

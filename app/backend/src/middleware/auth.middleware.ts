@@ -24,7 +24,7 @@ export const authenticateToken = async (
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'pulse360-secret') as {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'ouvidoria-secret') as {
       id: string;
       email: string;
       role: Role;

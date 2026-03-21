@@ -1,5 +1,5 @@
 {
-  "name": "pulse360-slack-bot",
+  "name": "ouvidoria-slack-bot",
   "version": "1.0.0",
   "description": "Slack Bot for Ouvidoria notifications",
   "main": "dist/index.js",

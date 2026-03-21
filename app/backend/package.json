@@ -1,5 +1,5 @@
 {
-  "name": "pulse360-backend",
+  "name": "ouvidoria-backend",
   "version": "1.0.0",
   "description": "Backend API for Ouvidoria - Employee Feedback Platform",
   "main": "dist/server.js",

@@ -1,7 +1,7 @@
 services:
-  # Pulse360 - Unified Backend + Frontend
+  # Ouvidoria - Unified Backend + Frontend
   - type: web
-    name: pulse360
+    name: ouvidoria
     runtime: node
     region: oregon
     buildCommand: npm install && npm run build

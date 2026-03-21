@@ -1,7 +1,7 @@
 {
-  "name": "pulse360",
+  "name": "ouvidoria",
   "version": "1.0.0",
-  "description": "Pulse360 - Employee Feedback Platform",
+  "description": "Ouvidoria - Employee Feedback Platform",
   "scripts": {
     "install:backend": "cd app/backend && npm install",
     "install:frontend": "cd app/frontend && npm install",
