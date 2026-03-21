@@ -94,6 +94,23 @@ export const dashboardAPI = {
     }),
 };
 
+// Colaboradores endpoints
+export const colaboradoresAPI = {
+  list: () => api.get('/colaboradores'),
+};
+
+// Feedbacks para colaboradores
+export const feedbacksColaboradorAPI = {
+  create: (data: {
+    colaboradorSlackId: string;
+    nota: number;
+    elogio?: string;
+    sugestao?: string;
+    critica?: string;
+  }) => api.post('/feedbacks/colaborador', data),
+  listPublicos: (slackId: string) => api.get(`/feedbacks/colaborador/publicos/${slackId}`),
+};
+
 // Upload endpoint
 export const uploadAPI = {
   upload: (file: File) => {

@@ -293,6 +293,129 @@ export async function sendComplaintNotification(params: ComplaintNotificationPar
   }
 }
 
+interface CollaboratorFeedbackNotificationParams {
+  slackUserId: string;
+  colaboradorNome: string;
+  nota: number;
+  comentario: string;
+  feedbackId: string;
+}
+
+// Enviar notificação de feedback para colaborador com botões interativos
+export async function sendCollaboratorFeedbackNotification(params: CollaboratorFeedbackNotificationParams) {
+  if (!process.env.SLACK_BOT_TOKEN) {
+    console.log('Slack não configurado - notificação de feedback de colaborador não enviada');
+    return;
+  }
+
+  try {
+    const { slackUserId, colaboradorNome, nota, comentario, feedbackId } = params;
+    const testId = getTestSlackUserId();
+
+    const message = {
+      channel: testId || slackUserId,
+      text: `Você recebeu um novo feedback no Pulse360`,
+      blocks: [
+        {
+          type: 'header',
+          text: {
+            type: 'plain_text',
+            text: '💬 Novo Feedback Recebido',
+            emoji: true
+          }
+        },
+        ...(testId ? [{
+          type: 'context',
+          elements: [
+            {
+              type: 'mrkdwn',
+              text: `Modo teste: originalmente para <@${slackUserId}>`
+            }
+          ]
+        }] : []),
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `Olá *${colaboradorNome}*! Você recebeu um feedback anônimo de um colega.`
+          }
+        },
+        {
+          type: 'section',
+          fields: [
+            {
+              type: 'mrkdwn',
+              text: `*Nota:*\n${'⭐'.repeat(Math.min(nota, 5))} ${nota}/10`
+            },
+            {
+              type: 'mrkdwn',
+              text: `*Data:*\n${new Date().toLocaleDateString('pt-BR')}`
+            }
+          ]
+        },
+        ...(comentario ? [{
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `*Comentário:*\n_"${comentario.substring(0, 200)}${comentario.length > 200 ? '...' : ''}"_`
+          }
+        }] : []),
+        {
+          type: 'divider'
+        },
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: '*Deseja tornar este feedback público no site Pulse360?*\nSe aceitar, o feedback ficará visível na plataforma (de forma anônima). Se recusar, ficará apenas registrado internamente.'
+          }
+        },
+        {
+          type: 'actions',
+          elements: [
+            {
+              type: 'button',
+              action_id: 'feedback_col_publico',
+              text: {
+                type: 'plain_text',
+                text: '✅ Tornar Público',
+                emoji: true
+              },
+              value: feedbackId,
+              style: 'primary'
+            },
+            {
+              type: 'button',
+              action_id: 'feedback_col_privado',
+              text: {
+                type: 'plain_text',
+                text: '🔒 Manter Privado',
+                emoji: true
+              },
+              value: feedbackId
+            }
+          ]
+        },
+        {
+          type: 'context',
+          elements: [
+            {
+              type: 'mrkdwn',
+              text: '📊 Pulse360 - Plataforma de Feedback'
+            }
+          ]
+        }
+      ]
+    };
+
+    await slack.chat.postMessage(message);
+    console.log(`Notificação de feedback de colaborador enviada para ${slackUserId}`);
+  } catch (error) {
+    console.error('Erro ao enviar notificação Slack de feedback de colaborador:', error);
+    throw error;
+  }
+}
+
 // Verificar conexão com Slack
 export async function testSlackConnection(): Promise<boolean> {
   if (!process.env.SLACK_BOT_TOKEN) {

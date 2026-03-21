@@ -84,3 +84,20 @@ export interface Badge {
   descricao: string;
   dataConquista: Date;
 }
+
+export interface Colaborador {
+  slackId: string;
+  nome: string;
+}
+
+export interface FeedbackColaborador {
+  id: string;
+  colaboradorSlackId: string;
+  colaboradorNome: string;
+  nota: number;
+  elogio?: string | null;
+  sugestao?: string | null;
+  critica?: string | null;
+  publica: boolean;
+  createdAt: Date;
+}

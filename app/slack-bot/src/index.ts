@@ -1,7 +1,11 @@
 import { App, LogLevel } from '@slack/bolt';
+import axios from 'axios';
 import dotenv from 'dotenv';
 
 dotenv.config();
+
+const BACKEND_URL = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, '');
+const INTERNAL_BOT_SECRET = process.env.SLACK_BOT_TOKEN || '';
 
 // Inicializar o app Slack Bolt
 const app = new App({
@@ -10,6 +14,64 @@ const app = new App({
   socketMode: true,
   appToken: process.env.SLACK_APP_TOKEN,
   logLevel: LogLevel.INFO,
+});
+
+// Ação: colaborador aceita tornar feedback público
+app.action('feedback_col_publico', async ({ action, ack, respond }) => {
+  await ack();
+  const feedbackId = (action as any).value;
+  try {
+    await axios.patch(
+      `${BACKEND_URL}/api/feedbacks/colaborador/${feedbackId}/publica`,
+      { publica: true },
+      { headers: { 'x-internal-secret': INTERNAL_BOT_SECRET } }
+    );
+    await respond({
+      replace_original: true,
+      text: '✅ Feedback marcado como público no Pulse360. Obrigado!',
+      blocks: [
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: '✅ *Feedback tornado público!* Ele agora está visível na plataforma Pulse360. Obrigado por contribuir com a transparência!'
+          }
+        }
+      ]
+    });
+  } catch (error) {
+    console.error('Erro ao marcar feedback como público:', error);
+    await respond({ text: 'Ocorreu um erro ao processar sua escolha. Tente novamente mais tarde.' });
+  }
+});
+
+// Ação: colaborador mantém feedback privado
+app.action('feedback_col_privado', async ({ action, ack, respond }) => {
+  await ack();
+  const feedbackId = (action as any).value;
+  try {
+    await axios.patch(
+      `${BACKEND_URL}/api/feedbacks/colaborador/${feedbackId}/publica`,
+      { publica: false },
+      { headers: { 'x-internal-secret': INTERNAL_BOT_SECRET } }
+    );
+    await respond({
+      replace_original: true,
+      text: '🔒 Feedback mantido privado.',
+      blocks: [
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: '🔒 *Feedback mantido privado.* Ele ficará registrado internamente e não será exibido publicamente no site.'
+          }
+        }
+      ]
+    });
+  } catch (error) {
+    console.error('Erro ao manter feedback privado:', error);
+    await respond({ text: 'Ocorreu um erro ao processar sua escolha. Tente novamente mais tarde.' });
+  }
 });
 
 // Comando /pulse360
