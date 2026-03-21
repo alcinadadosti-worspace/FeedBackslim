@@ -34,6 +34,9 @@ interface ComplaintNotificationParams {
   temas?: string[];
   descricao?: string;
   denunciaId: string;
+  anonima?: boolean;
+  nomeIdentificado?: string;
+  setorIdentificado?: string;
 }
 
 function parseCommaList(value: string | undefined): string[] {
@@ -188,7 +191,7 @@ export async function sendComplaintNotification(params: ComplaintNotificationPar
   }
 
   try {
-    const { gestorNome, tipo, tipoManifestacao, temas, descricao, denunciaId } = params;
+    const { gestorNome, tipo, tipoManifestacao, temas, descricao, denunciaId, anonima, nomeIdentificado, setorIdentificado } = params;
 
     const tipoLabels: Record<string, string> = {
       ASSEDIO_MORAL: 'Assédio Moral',
@@ -250,6 +253,24 @@ export async function sendComplaintNotification(params: ComplaintNotificationPar
         text: {
           type: 'mrkdwn',
           text: `*Temas:*\n${temas.slice(0, 8).map((t) => `• ${t}`).join('\n')}${temas.length > 8 ? '\n• ...' : ''}`
+        }
+      });
+    }
+
+    if (!anonima && (nomeIdentificado || setorIdentificado)) {
+      blocks.push({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*Identificação do denunciante:*\n👤 Nome: ${nomeIdentificado || '-'}\n🏢 Setor: ${setorIdentificado || '-'}`
+        }
+      });
+    } else if (anonima === false) {
+      blocks.push({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*Identificação:* Denúncia identificada (sem nome/setor informados)`
         }
       });
     }

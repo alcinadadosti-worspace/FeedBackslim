@@ -182,7 +182,10 @@ router.post('/', denunciaLimiter, async (req: AuthRequest, res: Response) => {
         tipoManifestacao: data.tipoManifestacao,
         temas: data.temas,
         descricao: data.descricao,
-        denunciaId: denunciaId
+        denunciaId: denunciaId,
+        anonima: data.anonima,
+        nomeIdentificado: data.nomeIdentificado,
+        setorIdentificado: data.setorIdentificado
       });
     } catch (slackError) {
       console.error('Erro ao enviar notificação Slack:', slackError);
