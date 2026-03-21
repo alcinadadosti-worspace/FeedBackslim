@@ -52,7 +52,7 @@ export default function HomePage() {
                   Avalie seus gestores de forma anonima. Compartilhe elogios, sugestoes ou criticas construtivas.
                 </p>
                 <div className="flex items-center gap-2 text-primary-600 font-bold group-hover:gap-3 transition-all">
-                  <span>Avaliar gestor</span>
+                  <span>Avaliar gestor ou colaborador</span>
                   <span>→</span>
                 </div>
               </div>
