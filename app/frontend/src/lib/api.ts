@@ -109,6 +109,7 @@ export const feedbacksColaboradorAPI = {
     critica?: string;
   }) => api.post('/feedbacks/colaborador', data),
   listPublicos: (slackId: string) => api.get(`/feedbacks/colaborador/publicos/${slackId}`),
+  ranking: () => api.get('/feedbacks/colaborador/ranking'),
 };
 
 // Upload endpoint

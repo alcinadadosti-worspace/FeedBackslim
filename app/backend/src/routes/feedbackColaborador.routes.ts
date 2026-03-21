@@ -107,6 +107,43 @@ router.patch('/:id/publica', async (req: Request, res: Response) => {
   }
 });
 
+// Ranking de colaboradores (top 10 por média de feedbacks)
+router.get('/ranking', async (req: Request, res: Response) => {
+  try {
+    const snap = await col('feedbacksColaborador').get();
+    const feedbacks = snap.docs.map((d: any) => normalizeFirestoreData(d.data()) as any);
+
+    const byColaborador: Record<string, { nome: string; total: number; soma: number }> = {};
+    for (const f of feedbacks) {
+      const id = f.colaboradorSlackId;
+      if (!id) continue;
+      if (!byColaborador[id]) {
+        byColaborador[id] = { nome: f.colaboradorNome, total: 0, soma: 0 };
+      }
+      byColaborador[id].total++;
+      byColaborador[id].soma += Number(f.nota || 0);
+    }
+
+    const ranking = Object.entries(byColaborador)
+      .filter(([, v]) => v.total >= 1)
+      .map(([slackId, v]) => ({
+        slackId,
+        nome: v.nome,
+        totalFeedbacks: v.total,
+        mediaFeedback: Number((v.soma / v.total).toFixed(2))
+      }))
+      .sort((a, b) => {
+        const diff = b.mediaFeedback - a.mediaFeedback;
+        return diff !== 0 ? diff : b.totalFeedbacks - a.totalFeedbacks;
+      })
+      .slice(0, 10);
+
+    res.json(ranking);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao obter ranking de colaboradores' });
+  }
+});
+
 // Listar feedbacks públicos de um colaborador
 router.get('/publicos/:slackId', async (req: Request, res: Response) => {
   try {
