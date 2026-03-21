@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, MessageSquare, Search } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 interface PublicLayoutProps {
   children: ReactNode;
@@ -26,9 +27,9 @@ export function PublicLayout({ children, showBackButton = true }: PublicLayoutPr
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 transition-colors">
       {/* Header */}
-      <header className="bg-white border-b-3 border-neutral-900 px-6 py-4">
+      <header className="bg-white dark:bg-neutral-800 border-b-3 border-neutral-900 dark:border-neutral-100 px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <Link href={homeHref} className="flex items-center gap-2 group">
             {showBackButton && (
@@ -36,7 +37,7 @@ export function PublicLayout({ children, showBackButton = true }: PublicLayoutPr
             )}
             <div className="flex items-center gap-2">
               <Image src="/logo.png" alt="Ouvidoria" width={40} height={40} className="object-contain" />
-              <span className="font-black text-xl text-neutral-900">Ouvidoria</span>
+              <span className="font-black text-xl text-neutral-900 dark:text-neutral-100">Ouvidoria</span>
             </div>
           </Link>
 
@@ -56,6 +57,7 @@ export function PublicLayout({ children, showBackButton = true }: PublicLayoutPr
               <span>Consultar denúncia</span>
             </Link>
 
+          <ThemeToggle />
           {isAuthenticated && user?.role === 'RH_ADMIN' ? (
             <Link href="/admin" className="text-sm text-neutral-500 hover:text-neutral-700 transition-colors">
               Painel RH/Admin
@@ -79,7 +81,7 @@ export function PublicLayout({ children, showBackButton = true }: PublicLayoutPr
       </main>
 
       {/* Footer */}
-      <footer className="border-t-3 border-neutral-900 bg-white px-6 py-4 mt-auto">
+      <footer className="border-t-3 border-neutral-900 dark:border-neutral-100 bg-white dark:bg-neutral-800 px-6 py-4 mt-auto">
         <div className="max-w-6xl mx-auto text-center text-sm text-neutral-500">
           <p>Ouvidoria - Plataforma de Feedback Empresarial</p>
           <p className="mt-1">Suas respostas sao anonimas e confidenciais.</p>

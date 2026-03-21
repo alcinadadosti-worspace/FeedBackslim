@@ -6,7 +6,7 @@
 
 @layer base {
   body {
-    @apply bg-neutral-50 text-neutral-900 font-sans antialiased;
+    @apply bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-sans antialiased;
   }
 }
 
@@ -38,17 +38,17 @@
 
   /* Cards Neobrutalistas */
   .card {
-    @apply bg-white border-3 border-neutral-900 shadow-brutal p-6;
+    @apply bg-white dark:bg-neutral-800 border-3 border-neutral-900 dark:border-neutral-100 shadow-brutal p-6;
   }
 
   .card-hover {
-    @apply bg-white border-3 border-neutral-900 shadow-brutal p-6 transition-all duration-150
+    @apply bg-white dark:bg-neutral-800 border-3 border-neutral-900 dark:border-neutral-100 shadow-brutal p-6 transition-all duration-150
            hover:shadow-brutal-hover hover:-translate-x-0.5 hover:-translate-y-0.5 cursor-pointer;
   }
 
   /* Inputs */
   .input {
-    @apply w-full px-4 py-3 border-3 border-neutral-900 bg-white text-neutral-900
+    @apply w-full px-4 py-3 border-3 border-neutral-900 dark:border-neutral-100 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100
            placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-500
            focus:ring-offset-2 transition-all;
   }
@@ -59,14 +59,14 @@
 
   /* Select */
   .select {
-    @apply w-full px-4 py-3 border-3 border-neutral-900 bg-white text-neutral-900
+    @apply w-full px-4 py-3 border-3 border-neutral-900 dark:border-neutral-100 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100
            focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
            transition-all appearance-none cursor-pointer;
   }
 
   /* Labels */
   .label {
-    @apply block text-sm font-bold text-neutral-900 mb-2 uppercase tracking-wide;
+    @apply block text-sm font-bold text-neutral-900 dark:text-neutral-100 mb-2 uppercase tracking-wide;
   }
 
   /* Badges */
@@ -179,9 +179,19 @@
   border-left: 2px solid #171717;
 }
 
+.dark ::-webkit-scrollbar-track {
+  background: #262626;
+  border-left: 2px solid #e5e5e5;
+}
+
 ::-webkit-scrollbar-thumb {
   background: #98d4a0;
   border: 2px solid #171717;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #5ea86c;
+  border: 2px solid #e5e5e5;
 }
 
 ::-webkit-scrollbar-thumb:hover {

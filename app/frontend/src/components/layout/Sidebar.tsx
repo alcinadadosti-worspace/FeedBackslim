@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { Avatar } from '@/components/ui/Avatar';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -97,9 +98,9 @@ export function Sidebar() {
   ];
 
   return (
-    <aside className="fixed left-0 top-0 h-full w-64 bg-white border-r-3 border-neutral-900 flex flex-col z-50">
+    <aside className="fixed left-0 top-0 h-full w-64 bg-white dark:bg-neutral-800 border-r-3 border-neutral-900 dark:border-neutral-100 flex flex-col z-50">
       {/* Logo */}
-      <div className="p-6 border-b-3 border-neutral-900">
+      <div className="p-6 border-b-3 border-neutral-900 dark:border-neutral-100">
         <Link href="/dashboard" className="flex items-center gap-3">
           <Image src="/logo.png" alt="Ouvidoria" width={48} height={48} className="object-contain" />
           <span className="font-display font-bold text-xl">Ouvidoria</span>
@@ -122,8 +123,8 @@ export function Sidebar() {
                     className={clsx(
                       'flex items-center gap-3 px-4 py-3 font-semibold transition-colors border-l-4',
                       isActive
-                        ? 'text-neutral-900 bg-primary-50 border-primary-500'
-                        : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 border-transparent'
+                        ? 'text-neutral-900 dark:text-neutral-100 bg-primary-50 dark:bg-primary-900/30 border-primary-500'
+                        : 'text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-700 border-transparent'
                     )}
                   >
                     <Icon className="w-5 h-5" />
@@ -136,17 +137,18 @@ export function Sidebar() {
       </nav>
 
       {/* User Section */}
-      <div className="p-4 border-t-3 border-neutral-900">
+      <div className="p-4 border-t-3 border-neutral-900 dark:border-neutral-100">
         <div className="flex items-center gap-3 mb-4">
           <Avatar src={user?.gestor?.foto || user?.avatar} alt={user?.nome} size="sm" />
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-neutral-900 truncate">{user?.nome}</p>
-            <p className="text-xs text-neutral-500 uppercase">{user?.role?.replace('_', ' ')}</p>
+            <p className="font-semibold text-neutral-900 dark:text-neutral-100 truncate">{user?.nome}</p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 uppercase">{user?.role?.replace('_', ' ')}</p>
           </div>
+          <ThemeToggle />
         </div>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-2 w-full px-4 py-2 text-neutral-600 hover:text-red-500 hover:bg-red-50 transition-colors font-semibold"
+          className="flex items-center gap-2 w-full px-4 py-2 text-neutral-600 dark:text-neutral-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-semibold"
         >
           <LogOut className="w-5 h-5" />
           Sair

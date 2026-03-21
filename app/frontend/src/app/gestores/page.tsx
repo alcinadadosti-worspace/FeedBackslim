@@ -6,6 +6,7 @@ import { Search } from 'lucide-react';
 import { SmartLayout } from '@/components/layout/SmartLayout';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge, BadgeIcon } from '@/components/ui/Badge';
 import { SimpleRating } from '@/components/ui/Rating';
@@ -16,6 +17,7 @@ export default function GestoresPage() {
   const [gestores, setGestores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [departamento, setDepartamento] = useState('');
 
   useEffect(() => {
     loadGestores();
@@ -32,13 +34,16 @@ export default function GestoresPage() {
     }
   };
 
+  const departamentos = [...new Set(gestores.map((g) => g.departamento).filter(Boolean))].sort();
+
   const filteredGestores = gestores.filter((gestor) => {
     const searchLower = search.toLowerCase();
-    return (
+    const matchesSearch =
       gestor.user?.nome?.toLowerCase().includes(searchLower) ||
       gestor.cargo?.toLowerCase().includes(searchLower) ||
-      gestor.departamento?.toLowerCase().includes(searchLower)
-    );
+      gestor.departamento?.toLowerCase().includes(searchLower);
+    const matchesDept = !departamento || gestor.departamento === departamento;
+    return matchesSearch && matchesDept;
   });
 
   return (
@@ -53,14 +58,28 @@ export default function GestoresPage() {
             </p>
           </div>
 
-          <div className="relative w-full md:w-80">
-            <Input
-              placeholder="Buscar gestor..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
-            />
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+            <div className="relative w-full sm:w-72">
+              <Input
+                placeholder="Buscar gestor..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10"
+              />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+            </div>
+            {departamentos.length > 0 && (
+              <div className="w-full sm:w-48">
+                <Select
+                  options={[
+                    { value: '', label: 'Todos departamentos' },
+                    ...departamentos.map((d) => ({ value: d, label: d })),
+                  ]}
+                  value={departamento}
+                  onChange={(e) => setDepartamento(e.target.value)}
+                />
+              </div>
+            )}
           </div>
         </div>
 

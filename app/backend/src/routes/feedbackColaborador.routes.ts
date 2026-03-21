@@ -186,16 +186,19 @@ router.get('/ranking', async (req: Request, res: Response) => {
 router.get('/publicos', async (req: Request, res: Response) => {
   try {
     res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
-    const snap = await col('feedbacksColaborador')
-      .where('publica', '==', true)
-      .get();
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(30, Math.max(1, Number(req.query.limit) || 20));
+    const offset = (page - 1) * limit;
 
-    const feedbacks = snap.docs
+    const snap = await col('feedbacksColaborador').where('publica', '==', true).get();
+    const all = snap.docs
       .map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }))
-      .sort((a: any, b: any) => (b.createdAt as Date).getTime() - (a.createdAt as Date).getTime())
-      .slice(0, 60);
+      .sort((a: any, b: any) => (b.createdAt as Date).getTime() - (a.createdAt as Date).getTime());
 
-    res.json(feedbacks);
+    const total = all.length;
+    const feedbacks = all.slice(offset, offset + limit);
+
+    res.json({ data: feedbacks, total, page, limit, pages: Math.ceil(total / limit) });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao listar feedbacks públicos' });
   }

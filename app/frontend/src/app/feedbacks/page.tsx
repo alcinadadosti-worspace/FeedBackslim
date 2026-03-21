@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { MessageSquare, ThumbsUp, Lightbulb, AlertCircle, UserCheck, Users, Star } from 'lucide-react';
+import { MessageSquare, ThumbsUp, Lightbulb, AlertCircle, UserCheck, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { SmartLayout } from '@/components/layout/SmartLayout';
-import { Card, CardTitle, CardContent } from '@/components/ui/Card';
+import { Card } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
 import { SimpleRating } from '@/components/ui/Rating';
 import { Loading } from '@/components/ui/Loading';
@@ -14,29 +14,62 @@ import { ptBR } from 'date-fns/locale';
 
 type Tab = 'gestores' | 'colaboradores';
 
+const PAGE_SIZE = 20;
+
 export default function FeedbacksPage() {
   const [tab, setTab] = useState<Tab>('gestores');
+
   const [avaliacoes, setAvaliacoes] = useState<any[]>([]);
+  const [avalTotal, setAvalTotal] = useState(0);
+  const [avalPage, setAvalPage] = useState(1);
+  const [avalPages, setAvalPages] = useState(1);
+  const [avalLoading, setAvalLoading] = useState(true);
+
   const [feedbacksCol, setFeedbacksCol] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [colTotal, setColTotal] = useState(0);
+  const [colPage, setColPage] = useState(1);
+  const [colPages, setColPages] = useState(1);
+  const [colLoading, setColLoading] = useState(true);
 
   useEffect(() => {
-    loadData();
+    loadAvaliacoes(1);
+    loadFeedbacksCol(1);
   }, []);
 
-  const loadData = async () => {
+  const loadAvaliacoes = async (page: number) => {
+    setAvalLoading(true);
     try {
-      const [avRes, colRes] = await Promise.allSettled([
-        avaliacoesAPI.listPublicas(),
-        feedbacksColaboradorAPI.listTodosPublicos(),
-      ]);
-      if (avRes.status === 'fulfilled') setAvaliacoes(avRes.value.data);
-      if (colRes.status === 'fulfilled') setFeedbacksCol(colRes.value.data);
+      const res = await avaliacoesAPI.listPublicas({ page, limit: PAGE_SIZE });
+      const { data, total, pages } = res.data;
+      setAvaliacoes(data);
+      setAvalTotal(total);
+      setAvalPages(pages);
+      setAvalPage(page);
+    } catch (error) {
+      console.error('Erro ao carregar avaliações:', error);
+    } finally {
+      setAvalLoading(false);
+    }
+  };
+
+  const loadFeedbacksCol = async (page: number) => {
+    setColLoading(true);
+    try {
+      const res = await feedbacksColaboradorAPI.listTodosPublicos({ page, limit: PAGE_SIZE });
+      const { data, total, pages } = res.data;
+      setFeedbacksCol(data);
+      setColTotal(total);
+      setColPages(pages);
+      setColPage(page);
     } catch (error) {
       console.error('Erro ao carregar feedbacks:', error);
     } finally {
-      setLoading(false);
+      setColLoading(false);
     }
+  };
+
+  const handleTabChange = (newTab: Tab) => {
+    setTab(newTab);
   };
 
   const formatDate = (date: any) => {
@@ -45,6 +78,44 @@ export default function FeedbacksPage() {
     } catch {
       return '';
     }
+  };
+
+  const Pagination = ({
+    page,
+    pages,
+    total,
+    onPage,
+  }: {
+    page: number;
+    pages: number;
+    total: number;
+    onPage: (p: number) => void;
+  }) => {
+    if (pages <= 1) return null;
+    return (
+      <div className="flex items-center justify-between mt-6 pt-4 border-t-2 border-neutral-200">
+        <span className="text-sm text-neutral-500">{total} feedbacks no total</span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => onPage(page - 1)}
+            disabled={page <= 1}
+            className="p-2 border-2 border-neutral-900 hover:bg-neutral-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="text-sm font-semibold px-2">
+            {page} / {pages}
+          </span>
+          <button
+            onClick={() => onPage(page + 1)}
+            disabled={page >= pages}
+            className="p-2 border-2 border-neutral-900 hover:bg-neutral-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -59,7 +130,7 @@ export default function FeedbacksPage() {
         {/* Tabs */}
         <div className="flex gap-2 mb-6 p-1 bg-neutral-100 border-2 border-neutral-200">
           <button
-            onClick={() => setTab('gestores')}
+            onClick={() => handleTabChange('gestores')}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 font-semibold text-sm transition-colors ${
               tab === 'gestores'
                 ? 'bg-white border-2 border-neutral-900 text-neutral-900'
@@ -68,12 +139,12 @@ export default function FeedbacksPage() {
           >
             <UserCheck className="w-4 h-4" />
             Gestores
-            {avaliacoes.length > 0 && (
-              <span className="bg-neutral-900 text-white text-xs px-1.5 py-0.5 font-bold">{avaliacoes.length}</span>
+            {avalTotal > 0 && (
+              <span className="bg-neutral-900 text-white text-xs px-1.5 py-0.5 font-bold">{avalTotal}</span>
             )}
           </button>
           <button
-            onClick={() => setTab('colaboradores')}
+            onClick={() => handleTabChange('colaboradores')}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 font-semibold text-sm transition-colors ${
               tab === 'colaboradores'
                 ? 'bg-white border-2 border-neutral-900 text-neutral-900'
@@ -82,77 +153,79 @@ export default function FeedbacksPage() {
           >
             <Users className="w-4 h-4" />
             Colaboradores
-            {feedbacksCol.length > 0 && (
-              <span className="bg-neutral-900 text-white text-xs px-1.5 py-0.5 font-bold">{feedbacksCol.length}</span>
+            {colTotal > 0 && (
+              <span className="bg-neutral-900 text-white text-xs px-1.5 py-0.5 font-bold">{colTotal}</span>
             )}
           </button>
         </div>
 
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <Loading size="lg" />
-          </div>
-        ) : tab === 'gestores' ? (
-          /* ---- FEEDBACKS DE GESTORES ---- */
-          avaliacoes.length === 0 ? (
+        {tab === 'gestores' ? (
+          avalLoading ? (
+            <div className="flex justify-center py-12"><Loading size="lg" /></div>
+          ) : avaliacoes.length === 0 ? (
             <Card className="text-center py-12">
               <MessageSquare className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
               <p className="text-neutral-500">Nenhum feedback público de gestores ainda</p>
             </Card>
           ) : (
-            <div className="space-y-4">
-              {avaliacoes.map((av: any) => (
-                <Card key={av.id}>
-                  <div className="flex items-start gap-4">
-                    <Link href={`/gestores/${av.gestor?.id}`} className="shrink-0">
-                      <Avatar src={av.gestor?.foto} alt={av.gestor?.user?.nome} size="md" />
-                    </Link>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <Link href={`/gestores/${av.gestor?.id}`} className="hover:underline">
-                          <span className="font-bold text-neutral-900">{av.gestor?.user?.nome || 'Gestor'}</span>
-                          {av.gestor?.cargo && (
-                            <span className="text-sm text-neutral-500 ml-2">{av.gestor.cargo}</span>
+            <>
+              <div className="space-y-4">
+                {avaliacoes.map((av: any) => (
+                  <Card key={av.id}>
+                    <div className="flex items-start gap-4">
+                      <Link href={`/gestores/${av.gestor?.id}`} className="shrink-0">
+                        <Avatar src={av.gestor?.foto} alt={av.gestor?.user?.nome} size="md" />
+                      </Link>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <Link href={`/gestores/${av.gestor?.id}`} className="hover:underline">
+                            <span className="font-bold text-neutral-900">{av.gestor?.user?.nome || 'Gestor'}</span>
+                            {av.gestor?.cargo && (
+                              <span className="text-sm text-neutral-500 ml-2">{av.gestor.cargo}</span>
+                            )}
+                          </Link>
+                          <div className="flex items-center gap-3">
+                            <SimpleRating value={av.nota} />
+                            <span className="text-xs text-neutral-400">{formatDate(av.createdAt)}</span>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 space-y-2">
+                          {av.elogio && (
+                            <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200">
+                              <ThumbsUp className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                              <p className="text-sm text-neutral-700">
+                                <span className="font-semibold text-green-700">Elogio: </span>{av.elogio}
+                              </p>
+                            </div>
                           )}
-                        </Link>
-                        <div className="flex items-center gap-3">
-                          <SimpleRating value={av.nota} />
-                          <span className="text-xs text-neutral-400">{formatDate(av.createdAt)}</span>
+                          {av.sugestao && (
+                            <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200">
+                              <Lightbulb className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                              <p className="text-sm text-neutral-700">
+                                <span className="font-semibold text-blue-700">Sugestão: </span>{av.sugestao}
+                              </p>
+                            </div>
+                          )}
+                          {av.critica && (
+                            <div className="flex items-start gap-2 p-3 bg-orange-50 border border-orange-200">
+                              <AlertCircle className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
+                              <p className="text-sm text-neutral-700">
+                                <span className="font-semibold text-orange-700">Crítica: </span>{av.critica}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
-
-                      <div className="mt-3 space-y-2">
-                        {av.elogio && (
-                          <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200">
-                            <ThumbsUp className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-                            <p className="text-sm text-neutral-700">
-                              <span className="font-semibold text-green-700">Elogio: </span>{av.elogio}
-                            </p>
-                          </div>
-                        )}
-                        {av.sugestao && (
-                          <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200">
-                            <Lightbulb className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
-                            <p className="text-sm text-neutral-700">
-                              <span className="font-semibold text-blue-700">Sugestão: </span>{av.sugestao}
-                            </p>
-                          </div>
-                        )}
-                        {av.critica && (
-                          <div className="flex items-start gap-2 p-3 bg-orange-50 border border-orange-200">
-                            <AlertCircle className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
-                            <p className="text-sm text-neutral-700">
-                              <span className="font-semibold text-orange-700">Crítica: </span>{av.critica}
-                            </p>
-                          </div>
-                        )}
-                      </div>
                     </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
+                  </Card>
+                ))}
+              </div>
+              <Pagination page={avalPage} pages={avalPages} total={avalTotal} onPage={loadAvaliacoes} />
+            </>
           )
+        ) : colLoading ? (
+          <div className="flex justify-center py-12"><Loading size="lg" /></div>
         ) : (
           /* ---- FEEDBACKS DE COLABORADORES ---- */
           feedbacksCol.length === 0 ? (
@@ -161,53 +234,56 @@ export default function FeedbacksPage() {
               <p className="text-neutral-500">Nenhum feedback público de colaboradores ainda</p>
             </Card>
           ) : (
-            <div className="space-y-4">
-              {feedbacksCol.map((fb: any) => (
-                <Card key={fb.id}>
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 bg-neutral-200 border-2 border-neutral-300 flex items-center justify-center font-bold text-neutral-600 shrink-0">
-                      {fb.colaboradorNome?.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <span className="font-bold text-neutral-900">{fb.colaboradorNome}</span>
-                        <div className="flex items-center gap-3">
-                          <SimpleRating value={fb.nota} />
-                          <span className="text-xs text-neutral-400">{formatDate(fb.createdAt)}</span>
+            <>
+              <div className="space-y-4">
+                {feedbacksCol.map((fb: any) => (
+                  <Card key={fb.id}>
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 bg-neutral-200 border-2 border-neutral-300 flex items-center justify-center font-bold text-neutral-600 shrink-0">
+                        {fb.colaboradorNome?.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <span className="font-bold text-neutral-900">{fb.colaboradorNome}</span>
+                          <div className="flex items-center gap-3">
+                            <SimpleRating value={fb.nota} />
+                            <span className="text-xs text-neutral-400">{formatDate(fb.createdAt)}</span>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 space-y-2">
+                          {fb.elogio && (
+                            <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200">
+                              <ThumbsUp className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                              <p className="text-sm text-neutral-700">
+                                <span className="font-semibold text-green-700">Elogio: </span>{fb.elogio}
+                              </p>
+                            </div>
+                          )}
+                          {fb.sugestao && (
+                            <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200">
+                              <Lightbulb className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                              <p className="text-sm text-neutral-700">
+                                <span className="font-semibold text-blue-700">Sugestão: </span>{fb.sugestao}
+                              </p>
+                            </div>
+                          )}
+                          {fb.critica && (
+                            <div className="flex items-start gap-2 p-3 bg-orange-50 border border-orange-200">
+                              <AlertCircle className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
+                              <p className="text-sm text-neutral-700">
+                                <span className="font-semibold text-orange-700">Crítica: </span>{fb.critica}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
-
-                      <div className="mt-3 space-y-2">
-                        {fb.elogio && (
-                          <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200">
-                            <ThumbsUp className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-                            <p className="text-sm text-neutral-700">
-                              <span className="font-semibold text-green-700">Elogio: </span>{fb.elogio}
-                            </p>
-                          </div>
-                        )}
-                        {fb.sugestao && (
-                          <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200">
-                            <Lightbulb className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
-                            <p className="text-sm text-neutral-700">
-                              <span className="font-semibold text-blue-700">Sugestão: </span>{fb.sugestao}
-                            </p>
-                          </div>
-                        )}
-                        {fb.critica && (
-                          <div className="flex items-start gap-2 p-3 bg-orange-50 border border-orange-200">
-                            <AlertCircle className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
-                            <p className="text-sm text-neutral-700">
-                              <span className="font-semibold text-orange-700">Crítica: </span>{fb.critica}
-                            </p>
-                          </div>
-                        )}
-                      </div>
                     </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
+                  </Card>
+                ))}
+              </div>
+              <Pagination page={colPage} pages={colPages} total={colTotal} onPage={loadFeedbacksCol} />
+            </>
           )
         )}
       </div>

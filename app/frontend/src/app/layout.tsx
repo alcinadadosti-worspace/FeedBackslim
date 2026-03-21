@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Toaster } from 'react-hot-toast';
+import { ThemeProvider } from '@/components/ui/ThemeProvider';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -14,7 +15,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body>
+      <body className="bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 transition-colors">
+        <ThemeProvider>
         <Toaster
           position="top-right"
           toastOptions={{
@@ -40,6 +42,7 @@ export default function RootLayout({
           }}
         />
         {children}
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -12,7 +12,7 @@ export function Card({ variant = 'default', children, className, ...props }: Car
   return (
     <div
       className={clsx(
-        'bg-white border-3 border-neutral-900 p-6',
+        'bg-white dark:bg-neutral-800 border-3 border-neutral-900 dark:border-neutral-100 p-6 animate-fade-in',
         variant === 'default' && 'shadow-brutal',
         variant === 'hover' && 'shadow-brutal transition-all duration-150 hover:shadow-brutal-hover hover:-translate-x-0.5 hover:-translate-y-0.5 cursor-pointer',
         className
@@ -34,7 +34,7 @@ export function CardHeader({ children, className, ...props }: HTMLAttributes<HTM
 
 export function CardTitle({ children, className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
   return (
-    <h3 className={clsx('text-xl font-bold text-neutral-900', className)} {...props}>
+    <h3 className={clsx('text-xl font-bold text-neutral-900 dark:text-neutral-100', className)} {...props}>
       {children}
     </h3>
   );

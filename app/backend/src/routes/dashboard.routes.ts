@@ -385,6 +385,8 @@ router.get('/export', authenticateToken, requireAdmin, async (req: AuthRequest, 
               desejaRetorno: d.desejaRetorno ?? '',
               declaracao: d.declaracao ?? null,
               anonima: d.anonima ?? null,
+              nomeIdentificado: d.anonima ? '' : (d.nomeIdentificado ?? ''),
+              setorIdentificado: d.anonima ? '' : (d.setorIdentificado ?? ''),
               status: d.status ?? ''
             };
           });

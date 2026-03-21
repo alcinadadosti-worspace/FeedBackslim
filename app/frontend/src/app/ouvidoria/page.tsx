@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { AlertTriangle, Shield, Eye, EyeOff, Send, Copy, CheckCheck } from 'lucide-react';
+import { AlertTriangle, Shield, Eye, EyeOff, Send, Copy, CheckCheck, CheckCircle2 } from 'lucide-react';
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { Card, CardTitle, CardContent } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -102,6 +102,7 @@ export default function OuvidoriaPage() {
   const [setorIdentificado, setSetorIdentificado] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const [codigoProtocolo, setCodigoProtocolo] = useState<string | null>(null);
   const [copiado, setCopiado] = useState(false);
 
@@ -187,6 +188,11 @@ export default function OuvidoriaPage() {
       return;
     }
 
+    setShowConfirmation(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    setShowConfirmation(false);
     setSubmitting(true);
 
     try {
@@ -285,6 +291,36 @@ export default function OuvidoriaPage() {
 
   return (
     <PublicLayout>
+      {showConfirmation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white border-3 border-neutral-900 shadow-brutal-lg p-8 max-w-md w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <CheckCircle2 className="w-7 h-7 text-red-500 shrink-0" />
+              <h2 className="text-xl font-bold text-neutral-900">Confirmar envio?</h2>
+            </div>
+            <p className="text-neutral-600 mb-2">
+              Você está registrando uma denúncia{' '}
+              <strong className="text-neutral-900">{anonima ? 'anônima' : 'identificada'}</strong>{' '}
+              contra <strong className="text-neutral-900">{selectedGestor?.user?.nome}</strong>.
+            </p>
+            <p className="text-sm text-neutral-500 mb-6">Esta ação não pode ser desfeita.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowConfirmation(false)}
+                className="flex-1 py-2.5 font-semibold border-2 border-neutral-900 hover:bg-neutral-100 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmSubmit}
+                className="flex-1 py-2.5 font-semibold bg-red-500 text-white border-2 border-neutral-900 hover:bg-red-600 transition-colors"
+              >
+                Confirmar Envio
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="mb-8">

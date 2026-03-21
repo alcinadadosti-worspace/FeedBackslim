@@ -59,7 +59,7 @@ export const gestoresAPI = {
 
 // Avaliações endpoints
 export const avaliacoesAPI = {
-  listPublicas: () => api.get('/avaliacoes/publicas'),
+  listPublicas: (params?: { page?: number; limit?: number }) => api.get('/avaliacoes/publicas', { params }),
   list: (params?: { gestorId?: string; page?: number; limit?: number }) =>
     api.get('/avaliacoes', { params }),
   create: (data: {
@@ -110,7 +110,7 @@ export const feedbacksColaboradorAPI = {
     sugestao?: string;
     critica?: string;
   }) => api.post('/feedbacks/colaborador', data),
-  listTodosPublicos: () => api.get('/feedbacks/colaborador/publicos'),
+  listTodosPublicos: (params?: { page?: number; limit?: number }) => api.get('/feedbacks/colaborador/publicos', { params }),
   listPublicos: (slackId: string) => api.get(`/feedbacks/colaborador/publicos/${slackId}`),
   ranking: () => api.get('/feedbacks/colaborador/ranking'),
 };

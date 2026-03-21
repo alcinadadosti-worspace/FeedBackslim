@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { Star, ThumbsUp, Lightbulb, AlertCircle, Send, Shield, Ban, Users, UserCheck } from 'lucide-react';
+import { Star, ThumbsUp, Lightbulb, AlertCircle, Send, Shield, Ban, Users, UserCheck, CheckCircle2 } from 'lucide-react';
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { Card, CardTitle, CardContent } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
@@ -35,6 +35,7 @@ export default function AvaliarPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [hasAlreadyEvaluated, setHasAlreadyEvaluated] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -108,6 +109,11 @@ export default function AvaliarPage() {
       return;
     }
 
+    setShowConfirmation(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    setShowConfirmation(false);
     setSubmitting(true);
 
     try {
@@ -156,8 +162,42 @@ export default function AvaliarPage() {
     })),
   ];
 
+  const confirmNome = tipoAvaliado === 'gestor'
+    ? selectedGestor?.user?.nome
+    : selectedColaborador?.nome;
+
   return (
     <PublicLayout>
+      {showConfirmation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white border-3 border-neutral-900 shadow-brutal-lg p-8 max-w-md w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <CheckCircle2 className="w-7 h-7 text-primary-600 shrink-0" />
+              <h2 className="text-xl font-bold text-neutral-900">Confirmar envio?</h2>
+            </div>
+            <p className="text-neutral-600 mb-2">
+              Você está enviando um feedback anônimo para{' '}
+              <strong className="text-neutral-900">{confirmNome}</strong> com nota{' '}
+              <strong className="text-neutral-900">{nota}/10</strong>.
+            </p>
+            <p className="text-sm text-neutral-500 mb-6">Esta ação não pode ser desfeita.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowConfirmation(false)}
+                className="flex-1 py-2.5 font-semibold border-2 border-neutral-900 hover:bg-neutral-100 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmSubmit}
+                className="flex-1 py-2.5 font-semibold bg-neutral-900 text-white border-2 border-neutral-900 hover:bg-neutral-700 transition-colors"
+              >
+                Confirmar Envio
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="max-w-3xl mx-auto">
         <Card>
           <CardTitle className="flex items-center gap-2 mb-6">

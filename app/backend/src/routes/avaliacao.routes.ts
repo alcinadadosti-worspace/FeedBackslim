@@ -23,13 +23,22 @@ const createAvaliacaoSchema = z.object({
 router.get('/publicas', async (req: AuthRequest, res: Response) => {
   try {
     res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
-    const snap = await col('avaliacoes')
-      .where('publica', '==', true)
-      .orderBy('createdAt', 'desc')
-      .limit(60)
-      .get();
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(30, Math.max(1, Number(req.query.limit) || 20));
+    const offset = (page - 1) * limit;
+
+    const [snap, totalSnap] = await Promise.all([
+      col('avaliacoes')
+        .where('publica', '==', true)
+        .orderBy('createdAt', 'desc')
+        .offset(offset)
+        .limit(limit)
+        .get(),
+      col('avaliacoes').where('publica', '==', true).get()
+    ]);
 
     const avaliacoes = snap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
+    const total = totalSnap.size;
 
     const gestorIds = [...new Set(avaliacoes.map((a: any) => a.gestorId).filter(Boolean))];
     const gestoresById = await getManyByIds<any>('gestores', gestorIds);
@@ -50,7 +59,7 @@ router.get('/publicas', async (req: AuthRequest, res: Response) => {
       };
     });
 
-    res.json(data);
+    res.json({ data, total, page, limit, pages: Math.ceil(total / limit) });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao listar avaliações públicas' });
   }
