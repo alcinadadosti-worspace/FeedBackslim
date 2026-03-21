@@ -34,7 +34,7 @@ export default function GestoresPage() {
     }
   };
 
-  const departamentos = [...new Set(gestores.map((g) => g.departamento).filter(Boolean))].sort();
+  const departamentos = Array.from(new Set(gestores.map((g) => g.departamento).filter(Boolean))).sort();
 
   const filteredGestores = gestores.filter((gestor) => {
     const searchLower = search.toLowerCase();
