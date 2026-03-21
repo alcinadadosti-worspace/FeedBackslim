@@ -319,14 +319,15 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
       return res.status(404).json({ error: 'Avaliação não encontrada' });
     }
 
-    const gestorSnap = await docRef('gestores', avaliacao.gestorId).get();
+    const [gestorSnap, autorSnap] = await Promise.all([
+      docRef('gestores', avaliacao.gestorId).get(),
+      avaliacao.autorId ? docRef('users', avaliacao.autorId).get() : Promise.resolve(null)
+    ]);
     const gestor = snapData<any>(gestorSnap as any);
+    const autor = autorSnap ? snapData<any>(autorSnap as any) : null;
 
     const gestorUserSnap = gestor ? await docRef('users', gestor.userId).get() : null;
     const gestorUser = gestorUserSnap ? snapData<any>(gestorUserSnap as any) : null;
-
-    const autorSnap = avaliacao.autorId ? await docRef('users', avaliacao.autorId).get() : null;
-    const autor = autorSnap ? snapData<any>(autorSnap as any) : null;
 
     res.json({
       ...avaliacao,

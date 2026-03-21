@@ -247,13 +247,15 @@ router.get('/:id', authenticateToken, requireAdmin, async (req: AuthRequest, res
       return res.status(404).json({ error: 'Denúncia não encontrada' });
     }
 
-    const gestorSnap = await docRef('gestores', denuncia.gestorId).get();
+    const [gestorSnap, autorSnap] = await Promise.all([
+      docRef('gestores', denuncia.gestorId).get(),
+      denuncia.autorId ? docRef('users', denuncia.autorId).get() : Promise.resolve(null)
+    ]);
     const gestor = snapData<any>(gestorSnap as any);
+    const autor = autorSnap ? snapData<any>(autorSnap as any) : null;
+
     const gestorUserSnap = gestor ? await docRef('users', gestor.userId).get() : null;
     const gestorUser = gestorUserSnap ? snapData<any>(gestorUserSnap as any) : null;
-
-    const autorSnap = denuncia.autorId ? await docRef('users', denuncia.autorId).get() : null;
-    const autor = autorSnap ? snapData<any>(autorSnap as any) : null;
 
     // Ocultar autor em denúncias anônimas
     res.json({

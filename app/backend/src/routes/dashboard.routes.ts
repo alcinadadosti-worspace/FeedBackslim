@@ -202,21 +202,25 @@ router.get('/admin', authenticateToken, requireAdmin, async (req: AuthRequest, r
       ? Number((notasAvaliacoes.reduce((a: number, b: number) => a + b, 0) / notasAvaliacoes.length).toFixed(1))
       : 0;
 
+    // Top gestores, denúncias (all + recentes), avaliações recentes — tudo em paralelo
+    const [
+      topGestoresSnap,
+      denunciasAllSnap,
+      avaliacoesRecentesSnap
+    ] = await Promise.all([
+      col('gestores').where('totalAvaliacoes', '>=', 1).get(),
+      col('denuncias').get(),
+      col('avaliacoes').orderBy('createdAt', 'desc').limit(10).get()
+    ]);
+
     // Top gestores
-    const topGestoresSnap = await col('gestores').where('totalAvaliacoes', '>=', 1).get();
     const topGestoresRaw = topGestoresSnap.docs
       .map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }))
       .sort((a: any, b: any) => (b.mediaAvaliacao ?? 0) - (a.mediaAvaliacao ?? 0))
       .slice(0, 10);
-    const topGestoresUsersById = await getManyByIds<any>('users', topGestoresRaw.map((g: any) => g.userId));
-    const topGestores = topGestoresRaw.map((g: any) => ({
-      ...g,
-      user: topGestoresUsersById[g.userId] ? { nome: (topGestoresUsersById[g.userId] as any).nome } : null
-    }));
 
-    // Gestores com mais denúncias
-    const denunciasAllSnap = await col('denuncias').get();
-    const denunciasAll = denunciasAllSnap.docs.map((d: any) => normalizeFirestoreData(d.data()) as any);
+    // Denúncias all
+    const denunciasAll = denunciasAllSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
     const denunciasCountByGestorId = denunciasAll.reduce<Record<string, number>>((acc: Record<string, number>, d: any) => {
       acc[d.gestorId] = (acc[d.gestorId] || 0) + 1;
       return acc;
@@ -225,34 +229,64 @@ router.get('/admin', authenticateToken, requireAdmin, async (req: AuthRequest, r
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5);
 
-    const gestoresById = await getManyByIds<any>('gestores', topDenunciados.map(([gestorId]) => gestorId));
-    const gestoresUsersById = await getManyByIds<any>(
-      'users',
-      Object.values(gestoresById).map((g: any) => (g as any).userId).filter(Boolean)
-    );
+    // Denúncias recentes (reusar denunciasAllSnap, evita query extra)
+    const denunciasRecentesRaw = [...denunciasAll]
+      .sort((a: any, b: any) => (b.createdAt as Date).getTime() - (a.createdAt as Date).getTime())
+      .slice(0, 10);
+
+    // Avaliações recentes
+    const avaliacoesRecentesRaw = avaliacoesRecentesSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
+
+    // Buscar todos os IDs necessários e resolver em paralelo
+    const topGestorIds = topGestoresRaw.map((g: any) => g.userId);
+    const denunciadosGestorIds = topDenunciados.map(([gestorId]) => gestorId);
+    const avalGestorIds = [...new Set(avaliacoesRecentesRaw.map((a: any) => a.gestorId).filter(Boolean))];
+    const denRecGestorIds = [...new Set(denunciasRecentesRaw.map((d: any) => d.gestorId).filter(Boolean))];
+
+    const [
+      topGestoresUsersById,
+      denunciadosGestoresById,
+      avalGestoresById,
+      denRecGestoresById
+    ] = await Promise.all([
+      getManyByIds<any>('users', topGestorIds),
+      getManyByIds<any>('gestores', denunciadosGestorIds),
+      getManyByIds<any>('gestores', avalGestorIds),
+      getManyByIds<any>('gestores', denRecGestorIds)
+    ]);
+
+    // Buscar users dos gestores de denúncias, avaliações e denúncias recentes em paralelo
+    const denunciadosUserIds = Object.values(denunciadosGestoresById).map((g: any) => (g as any).userId).filter(Boolean);
+    const avalGestorUserIds = Object.values(avalGestoresById).map((g: any) => (g as any).userId).filter(Boolean);
+    const avalAutorIds = avaliacoesRecentesRaw.map((a: any) => a.autorId).filter(Boolean);
+    const denRecUserIds = Object.values(denRecGestoresById).map((g: any) => (g as any).userId).filter(Boolean);
+
+    const [denunciadosUsersById, avalUsersById, denRecUsersById] = await Promise.all([
+      getManyByIds<any>('users', denunciadosUserIds),
+      getManyByIds<any>('users', [...new Set([...avalAutorIds, ...avalGestorUserIds])]),
+      getManyByIds<any>('users', denRecUserIds)
+    ]);
+
+    // Montar resultados
+    const topGestores = topGestoresRaw.map((g: any) => ({
+      ...g,
+      user: topGestoresUsersById[g.userId] ? { nome: (topGestoresUsersById[g.userId] as any).nome } : null
+    }));
+
     const gestoresDenunciados = topDenunciados.map(([gestorId, total]) => {
-      const gestor = gestoresById[gestorId];
-      const gestorUser = gestor ? gestoresUsersById[(gestor as any).userId] : undefined;
+      const gestor = denunciadosGestoresById[gestorId];
+      const gestorUser = gestor ? denunciadosUsersById[(gestor as any).userId] : undefined;
       return {
         gestor: gestor ? { ...(gestor as any), user: gestorUser ? { nome: (gestorUser as any).nome } : null } : null,
         totalDenuncias: total
       };
     });
 
-    // Denúncias por tipo
     const denunciasPorTipo = denunciasAll.reduce<Record<string, number>>((acc: Record<string, number>, d: any) => {
       acc[d.tipo] = (acc[d.tipo] || 0) + 1;
       return acc;
     }, {});
 
-    // Avaliações recentes
-    const avaliacoesRecentesSnap = await col('avaliacoes').orderBy('createdAt', 'desc').limit(10).get();
-    const avaliacoesRecentesRaw = avaliacoesRecentesSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
-    const avaliacoesGestorIds = avaliacoesRecentesRaw.map((a: any) => a.gestorId).filter(Boolean);
-    const avaliacoesAutorIds = avaliacoesRecentesRaw.map((a: any) => a.autorId).filter(Boolean);
-    const avalGestoresById = await getManyByIds<any>('gestores', avaliacoesGestorIds);
-    const avalGestorUserIds = Object.values(avalGestoresById).map((g: any) => (g as any).userId).filter(Boolean);
-    const avalUsersById = await getManyByIds<any>('users', [...avaliacoesAutorIds, ...avalGestorUserIds]);
     const avaliacoesRecentes = avaliacoesRecentesRaw.map((a: any) => {
       const gestor = avalGestoresById[a.gestorId];
       const gestorUser = gestor ? avalUsersById[(gestor as any).userId] : undefined;
@@ -264,16 +298,9 @@ router.get('/admin', authenticateToken, requireAdmin, async (req: AuthRequest, r
       };
     });
 
-    // Denúncias recentes
-    const denunciasRecentesSnap = await col('denuncias').orderBy('createdAt', 'desc').limit(10).get();
-    const denunciasRecentesRaw = denunciasRecentesSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
-    const denunciasGestorIds = denunciasRecentesRaw.map((d: any) => d.gestorId).filter(Boolean);
-    const denGestoresById = await getManyByIds<any>('gestores', denunciasGestorIds);
-    const denGestorUserIds = Object.values(denGestoresById).map((g: any) => (g as any).userId).filter(Boolean);
-    const denUsersById = await getManyByIds<any>('users', denGestorUserIds);
     const denunciasRecentes = denunciasRecentesRaw.map((d: any) => {
-      const gestor = denGestoresById[d.gestorId];
-      const gestorUser = gestor ? denUsersById[(gestor as any).userId] : undefined;
+      const gestor = denRecGestoresById[d.gestorId];
+      const gestorUser = gestor ? denRecUsersById[(gestor as any).userId] : undefined;
       return {
         ...d,
         gestor: gestor ? { ...(gestor as any), user: gestorUser ? { nome: (gestorUser as any).nome } : null } : null

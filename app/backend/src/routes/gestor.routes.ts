@@ -121,9 +121,11 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     const gestores = gestoresSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
 
     const userIds = gestores.map((g: any) => g.userId);
-    const usersById = await getManyByIds<any>('users', userIds);
+    const [usersById, badgesSnap] = await Promise.all([
+      getManyByIds<any>('users', userIds),
+      col('badges').get()
+    ]);
 
-    const badgesSnap = await col('badges').get();
     const badgesByGestorId = badgesSnap.docs.reduce<Record<string, any[]>>((acc: Record<string, any[]>, d: any) => {
       const b: any = normalizeFirestoreData(d.data());
       const gestorId = b.gestorId;
@@ -163,8 +165,11 @@ router.get('/ranking', async (req: AuthRequest, res: Response) => {
       })
       .slice(0, 10);
 
-    const usersById = await getManyByIds<any>('users', gestores.map((g: any) => g.userId));
-    const badgesSnap = await col('badges').get();
+    const [usersById, badgesSnap] = await Promise.all([
+      getManyByIds<any>('users', gestores.map((g: any) => g.userId)),
+      col('badges').get()
+    ]);
+
     const badgesByGestorId = badgesSnap.docs.reduce<Record<string, any[]>>((acc: Record<string, any[]>, d: any) => {
       const b: any = normalizeFirestoreData(d.data());
       const gestorId = b.gestorId;
@@ -198,13 +203,14 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Gestor não encontrado' });
     }
 
-    const userSnap = await docRef('users', gestor.userId).get();
+    const [userSnap, badgesSnap, avaliacoesSnap] = await Promise.all([
+      docRef('users', gestor.userId).get(),
+      col('badges').where('gestorId', '==', gestor.id).get(),
+      col('avaliacoes').where('gestorId', '==', gestor.id).get()
+    ]);
     const user = snapData<any>(userSnap as any);
-
-    const badgesSnap = await col('badges').where('gestorId', '==', gestor.id).get();
     const badges = badgesSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
 
-    const avaliacoesSnap = await col('avaliacoes').where('gestorId', '==', gestor.id).get();
     const avaliacoes = avaliacoesSnap.docs
       .map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }))
       .filter((a: any) => a.publica !== false)
@@ -319,10 +325,11 @@ router.put('/:id', authenticateToken, requireGestorOrAdmin, async (req: AuthRequ
       return res.status(404).json({ error: 'Gestor não encontrado' });
     }
 
-    const userSnap = await docRef('users', updated.userId).get();
+    const [userSnap, badgesSnap] = await Promise.all([
+      docRef('users', updated.userId).get(),
+      col('badges').where('gestorId', '==', updated.id).get()
+    ]);
     const user = snapData<any>(userSnap as any);
-
-    const badgesSnap = await col('badges').where('gestorId', '==', updated.id).get();
     const badges = badgesSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
 
     res.json({
