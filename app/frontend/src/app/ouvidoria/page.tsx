@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { AlertTriangle, Shield, Eye, EyeOff, Send, Copy, CheckCheck } from 'lucide-react';
