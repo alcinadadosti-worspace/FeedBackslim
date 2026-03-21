@@ -243,28 +243,28 @@ export default function OuvidoriaPage() {
           <div className="w-20 h-20 bg-green-100 border-3 border-neutral-900 flex items-center justify-center mx-auto mb-6">
             <CheckCheck className="w-10 h-10 text-green-600" />
           </div>
-          <h1 className="text-3xl font-display font-bold text-neutral-900 mb-2">Denúncia Registrada!</h1>
-          <p className="text-neutral-600 mb-8">
+          <h1 className="text-3xl font-display font-bold text-neutral-900 dark:text-neutral-100 mb-2">Denúncia Registrada!</h1>
+          <p className="text-neutral-600 dark:text-neutral-300 mb-8">
             O RH foi notificado e irá analisar sua manifestação com sigilo.
           </p>
 
-          <div className="bg-white border-3 border-neutral-900 p-8 shadow-brutal mb-6">
-            <p className="text-sm font-bold text-neutral-500 uppercase mb-3">Seu Código de Protocolo</p>
-            <div className="text-5xl font-black tracking-[0.3em] text-neutral-900 mb-4">
+          <div className="bg-white dark:bg-neutral-800 border-3 border-neutral-900 dark:border-neutral-100 p-8 shadow-brutal mb-6">
+            <p className="text-sm font-bold text-neutral-500 dark:text-neutral-400 uppercase mb-3">Seu Código de Protocolo</p>
+            <div className="text-5xl font-black tracking-[0.3em] text-neutral-900 dark:text-neutral-100 mb-4">
               {codigoProtocolo}
             </div>
             <button
               onClick={handleCopiar}
-              className="flex items-center gap-2 mx-auto px-4 py-2 border-2 border-neutral-900 text-sm font-semibold hover:bg-neutral-100 transition-colors"
+              className="flex items-center gap-2 mx-auto px-4 py-2 border-2 border-neutral-900 dark:border-neutral-100 dark:text-neutral-100 text-sm font-semibold hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
             >
               {copiado ? <CheckCheck className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
               {copiado ? 'Copiado!' : 'Copiar código'}
             </button>
           </div>
 
-          <div className="p-4 bg-yellow-50 border-2 border-yellow-300 text-left mb-6">
-            <p className="font-bold text-yellow-800 mb-1">⚠️ Guarde este código!</p>
-            <p className="text-sm text-yellow-700">
+          <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-300 dark:border-yellow-700 text-left mb-6">
+            <p className="font-bold text-yellow-800 dark:text-yellow-300 mb-1">⚠️ Guarde este código!</p>
+            <p className="text-sm text-yellow-700 dark:text-yellow-400">
               Este código é a única forma de consultar o andamento da sua denúncia.
               Ele não será enviado por e-mail ou qualquer outro canal.
             </p>
@@ -279,7 +279,7 @@ export default function OuvidoriaPage() {
             </Link>
             <Link
               href="/"
-              className="px-6 py-3 font-bold border-2 border-neutral-900 hover:bg-neutral-100 transition-colors"
+              className="px-6 py-3 font-bold border-2 border-neutral-900 dark:border-neutral-100 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
             >
               Voltar ao Início
             </Link>
@@ -293,21 +293,21 @@ export default function OuvidoriaPage() {
     <PublicLayout>
       {showConfirmation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white border-3 border-neutral-900 shadow-brutal-lg p-8 max-w-md w-full">
+          <div className="bg-white dark:bg-neutral-800 border-3 border-neutral-900 dark:border-neutral-100 shadow-brutal-lg p-8 max-w-md w-full">
             <div className="flex items-center gap-3 mb-4">
               <CheckCircle2 className="w-7 h-7 text-red-500 shrink-0" />
-              <h2 className="text-xl font-bold text-neutral-900">Confirmar envio?</h2>
+              <h2 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">Confirmar envio?</h2>
             </div>
-            <p className="text-neutral-600 mb-2">
+            <p className="text-neutral-600 dark:text-neutral-300 mb-2">
               Você está registrando uma denúncia{' '}
-              <strong className="text-neutral-900">{anonima ? 'anônima' : 'identificada'}</strong>{' '}
-              contra <strong className="text-neutral-900">{selectedGestor?.user?.nome}</strong>.
+              <strong className="text-neutral-900 dark:text-neutral-100">{anonima ? 'anônima' : 'identificada'}</strong>{' '}
+              contra <strong className="text-neutral-900 dark:text-neutral-100">{selectedGestor?.user?.nome}</strong>.
             </p>
-            <p className="text-sm text-neutral-500 mb-6">Esta ação não pode ser desfeita.</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">Esta ação não pode ser desfeita.</p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowConfirmation(false)}
-                className="flex-1 py-2.5 font-semibold border-2 border-neutral-900 hover:bg-neutral-100 transition-colors"
+                className="flex-1 py-2.5 font-semibold border-2 border-neutral-900 dark:border-neutral-100 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
               >
                 Cancelar
               </button>
@@ -328,9 +328,9 @@ export default function OuvidoriaPage() {
             <div className="w-12 h-12 bg-red-400 border-3 border-neutral-900 flex items-center justify-center">
               <AlertTriangle className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-3xl font-display font-bold text-neutral-900">Ouvidoria</h1>
+            <h1 className="text-3xl font-display font-bold text-neutral-900 dark:text-neutral-100">Ouvidoria</h1>
           </div>
-          <p className="text-neutral-600">
+          <p className="text-neutral-600 dark:text-neutral-300">
             Registre denúncias de forma confidencial. Todas as informações serão tratadas com sigilo.
           </p>
         </div>
@@ -358,11 +358,11 @@ export default function OuvidoriaPage() {
                   />
 
                   {selectedGestor && (
-                    <div className="mt-4 p-4 bg-neutral-50 border-2 border-neutral-200 flex items-center gap-4">
+                    <div className="mt-4 p-4 bg-neutral-50 dark:bg-neutral-700 border-2 border-neutral-200 dark:border-neutral-600 flex items-center gap-4">
                       <Avatar src={selectedGestor.foto} alt={selectedGestor.user?.nome} size="md" />
                       <div>
-                        <p className="font-bold text-neutral-900">{selectedGestor.user?.nome}</p>
-                        <p className="text-sm text-neutral-600">{selectedGestor.cargo}</p>
+                        <p className="font-bold text-neutral-900 dark:text-neutral-100">{selectedGestor.user?.nome}</p>
+                        <p className="text-sm text-neutral-600 dark:text-neutral-300">{selectedGestor.cargo}</p>
                       </div>
                     </div>
                   )}
@@ -376,8 +376,8 @@ export default function OuvidoriaPage() {
                 />
 
                 <div>
-                  <p className="font-bold text-neutral-900 mb-2">Temas abordados</p>
-                  <p className="text-sm text-neutral-600 mb-3">
+                  <p className="font-bold text-neutral-900 dark:text-neutral-100 mb-2">Temas abordados</p>
+                  <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-3">
                     Selecione o(s) tema(s) relacionado(s) à sua manifestação:
                   </p>
                   <div className="space-y-2">
@@ -386,7 +386,7 @@ export default function OuvidoriaPage() {
                       return (
                         <label
                           key={t}
-                          className="flex items-start gap-3 p-3 bg-white border-2 border-neutral-200 hover:border-neutral-300 transition-colors cursor-pointer"
+                          className="flex items-start gap-3 p-3 bg-white dark:bg-neutral-700 border-2 border-neutral-200 dark:border-neutral-600 hover:border-neutral-300 dark:hover:border-neutral-400 transition-colors cursor-pointer"
                         >
                           <input
                             type="checkbox"
@@ -396,7 +396,7 @@ export default function OuvidoriaPage() {
                               setTemas((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
                             }}
                           />
-                          <span className="text-sm text-neutral-800">{t}</span>
+                          <span className="text-sm text-neutral-800 dark:text-neutral-100">{t}</span>
                         </label>
                       );
                     })}
@@ -412,7 +412,7 @@ export default function OuvidoriaPage() {
                     onChange={(e) => setDescricao(e.target.value)}
                     rows={6}
                   />
-                  <p className="text-xs text-neutral-500 mt-1">
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                     Mínimo de 10 caracteres. Quanto mais detalhes, melhor.
                   </p>
                 </div>
@@ -425,7 +425,7 @@ export default function OuvidoriaPage() {
                     onChange={(e) => setDescricaoComplementar(e.target.value)}
                     rows={6}
                   />
-                  <p className="text-xs text-neutral-500 mt-1">
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                     Sempre que possível, informe fatos, datas, locais, envolvidos (nomes ou cargos) e impactos.
                   </p>
                 </div>
@@ -465,7 +465,7 @@ export default function OuvidoriaPage() {
                   onChange={(e) => setDesejaRetorno(e.target.value)}
                 />
 
-                <div className="p-4 bg-neutral-50 border-2 border-neutral-200">
+                <div className="p-4 bg-neutral-50 dark:bg-neutral-700 border-2 border-neutral-200 dark:border-neutral-600">
                   <label className="flex items-start gap-3 cursor-pointer">
                     <input
                       type="checkbox"
@@ -473,7 +473,7 @@ export default function OuvidoriaPage() {
                       checked={declaracao}
                       onChange={(e) => setDeclaracao(e.target.checked)}
                     />
-                    <span className="text-sm text-neutral-800">
+                    <span className="text-sm text-neutral-800 dark:text-neutral-100">
                       Declaro que as informações prestadas são verdadeiras, de acordo com meu conhecimento, e estou ciente
                       de que este canal deve ser utilizado de forma ética e responsável.
                     </span>
@@ -481,19 +481,19 @@ export default function OuvidoriaPage() {
                 </div>
 
                 {/* Anonimato */}
-                <div className="p-4 bg-neutral-100 border-2 border-neutral-300">
+                <div className="p-4 bg-neutral-100 dark:bg-neutral-700 border-2 border-neutral-300 dark:border-neutral-500">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       {anonima ? (
-                        <EyeOff className="w-6 h-6 text-neutral-600" />
+                        <EyeOff className="w-6 h-6 text-neutral-600 dark:text-neutral-300" />
                       ) : (
-                        <Eye className="w-6 h-6 text-neutral-600" />
+                        <Eye className="w-6 h-6 text-neutral-600 dark:text-neutral-300" />
                       )}
                       <div>
-                        <p className="font-bold text-neutral-900">
+                        <p className="font-bold text-neutral-900 dark:text-neutral-100">
                           {anonima ? 'Denúncia Anônima' : 'Denúncia Identificada'}
                         </p>
-                        <p className="text-sm text-neutral-600">
+                        <p className="text-sm text-neutral-600 dark:text-neutral-300">
                           {anonima
                             ? 'Sua identidade será protegida'
                             : 'Seu nome será visível para o RH'}
@@ -518,8 +518,8 @@ export default function OuvidoriaPage() {
 
                 {/* Identificação (quando não anônima) */}
                 {!anonima && (
-                  <div className="p-4 bg-blue-50 border-2 border-blue-200 space-y-4">
-                    <p className="font-bold text-blue-900">Sua identificação</p>
+                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 space-y-4">
+                    <p className="font-bold text-blue-900 dark:text-blue-300">Sua identificação</p>
                     <Input
                       label="Seu nome"
                       placeholder="Digite seu nome completo"
@@ -536,12 +536,12 @@ export default function OuvidoriaPage() {
                 )}
 
                 {/* Aviso de Confidencialidade */}
-                <div className="p-4 bg-yellow-50 border-2 border-yellow-300">
+                <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-300 dark:border-yellow-700">
                   <div className="flex items-start gap-3">
                     <Shield className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-bold text-yellow-800">Confidencialidade Garantida</p>
-                      <p className="text-sm text-yellow-700 mt-1">
+                      <p className="font-bold text-yellow-800 dark:text-yellow-300">Confidencialidade Garantida</p>
+                      <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">
                         Esta denúncia será tratada com total sigilo pelo departamento de RH.
                         O gestor será notificado de forma genérica, sem acesso aos detalhes ou
                         identificação do denunciante (se anônima).

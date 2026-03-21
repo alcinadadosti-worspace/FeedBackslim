@@ -70,10 +70,10 @@ export default function GestorPerfilPage() {
             <Avatar src={gestor.foto} alt={gestor.user?.nome} size="xl" />
 
             <div className="flex-1">
-              <h1 className="text-3xl font-display font-bold text-neutral-900">
+              <h1 className="text-3xl font-display font-bold text-neutral-900 dark:text-neutral-100">
                 {gestor.user?.nome}
               </h1>
-              <p className="text-xl text-neutral-600 mt-1">{gestor.cargo}</p>
+              <p className="text-xl text-neutral-600 dark:text-neutral-300 mt-1">{gestor.cargo}</p>
 
               {gestor.departamento && (
                 <Badge variant="primary" className="mt-3">
@@ -82,7 +82,7 @@ export default function GestorPerfilPage() {
               )}
 
               {gestor.bio && (
-                <p className="text-neutral-600 mt-4">{gestor.bio}</p>
+                <p className="text-neutral-600 dark:text-neutral-300 mt-4">{gestor.bio}</p>
               )}
 
               {/* Badges */}
@@ -96,16 +96,16 @@ export default function GestorPerfilPage() {
             </div>
 
             {/* Stats */}
-            <div className="flex flex-col items-center justify-center p-6 bg-neutral-50 border-3 border-neutral-900">
+            <div className="flex flex-col items-center justify-center p-6 bg-neutral-50 dark:bg-neutral-700 border-3 border-neutral-900 dark:border-neutral-100">
               <div className="text-center">
-                <p className="text-sm font-bold text-neutral-600 uppercase mb-2">Média Geral</p>
+                <p className="text-sm font-bold text-neutral-600 dark:text-neutral-300 uppercase mb-2">Média Geral</p>
                 <div className="flex items-center justify-center gap-2">
                   <Star className="w-8 h-8 text-gold-400 fill-gold-400" />
-                  <span className="text-4xl font-bold text-neutral-900">
+                  <span className="text-4xl font-bold text-neutral-900 dark:text-neutral-100">
                     {gestor.mediaAvaliacao.toFixed(1)}
                   </span>
                 </div>
-                <p className="text-sm text-neutral-500 mt-2">
+                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">
                   {gestor.totalAvaliacoes} avaliações
                 </p>
               </div>
@@ -122,32 +122,32 @@ export default function GestorPerfilPage() {
 
         {/* Feedback Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card className="bg-green-50">
+          <Card className="bg-green-50 dark:bg-green-900/20">
             <div className="flex items-center gap-3">
               <ThumbsUp className="w-8 h-8 text-green-600" />
               <div>
-                <p className="text-2xl font-bold text-neutral-900">{elogios.length}</p>
-                <p className="text-sm text-neutral-600">Elogios</p>
+                <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{elogios.length}</p>
+                <p className="text-sm text-neutral-600 dark:text-neutral-300">Elogios</p>
               </div>
             </div>
           </Card>
 
-          <Card className="bg-blue-50">
+          <Card className="bg-blue-50 dark:bg-blue-900/20">
             <div className="flex items-center gap-3">
               <Lightbulb className="w-8 h-8 text-blue-600" />
               <div>
-                <p className="text-2xl font-bold text-neutral-900">{sugestoes.length}</p>
-                <p className="text-sm text-neutral-600">Sugestões</p>
+                <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{sugestoes.length}</p>
+                <p className="text-sm text-neutral-600 dark:text-neutral-300">Sugestões</p>
               </div>
             </div>
           </Card>
 
-          <Card className="bg-orange-50">
+          <Card className="bg-orange-50 dark:bg-orange-900/20">
             <div className="flex items-center gap-3">
               <AlertCircle className="w-8 h-8 text-orange-600" />
               <div>
-                <p className="text-2xl font-bold text-neutral-900">{criticas.length}</p>
-                <p className="text-sm text-neutral-600">Críticas Construtivas</p>
+                <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{criticas.length}</p>
+                <p className="text-sm text-neutral-600 dark:text-neutral-300">Críticas Construtivas</p>
               </div>
             </div>
           </Card>
@@ -164,16 +164,16 @@ export default function GestorPerfilPage() {
               {gestor.avaliacoes?.map((avaliacao: any) => (
                 <div
                   key={avaliacao.id}
-                  className="p-4 border-2 border-neutral-200"
+                  className="p-4 border-2 border-neutral-200 dark:border-neutral-700"
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <Avatar src={null} alt={avaliacao.autor?.nome} size="sm" />
                       <div>
-                        <p className="font-semibold text-neutral-900">
+                        <p className="font-semibold text-neutral-900 dark:text-neutral-100">
                           {avaliacao.autor?.nome || 'Colaborador'}
                         </p>
-                        <p className="text-xs text-neutral-500">
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
                           {format(new Date(avaliacao.createdAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                         </p>
                       </div>
@@ -185,24 +185,24 @@ export default function GestorPerfilPage() {
                     {avaliacao.elogio && (
                       <div className="flex items-start gap-2">
                         <ThumbsUp className="w-4 h-4 text-green-600 mt-1 flex-shrink-0" />
-                        <p className="text-neutral-700">
-                          <span className="font-semibold text-green-700">Elogio:</span> {avaliacao.elogio}
+                        <p className="text-neutral-700 dark:text-neutral-300">
+                          <span className="font-semibold text-green-700 dark:text-green-400">Elogio:</span> {avaliacao.elogio}
                         </p>
                       </div>
                     )}
                     {avaliacao.sugestao && (
                       <div className="flex items-start gap-2">
                         <Lightbulb className="w-4 h-4 text-blue-600 mt-1 flex-shrink-0" />
-                        <p className="text-neutral-700">
-                          <span className="font-semibold text-blue-700">Sugestão:</span> {avaliacao.sugestao}
+                        <p className="text-neutral-700 dark:text-neutral-300">
+                          <span className="font-semibold text-blue-700 dark:text-blue-400">Sugestão:</span> {avaliacao.sugestao}
                         </p>
                       </div>
                     )}
                     {avaliacao.critica && (
                       <div className="flex items-start gap-2">
                         <AlertCircle className="w-4 h-4 text-orange-600 mt-1 flex-shrink-0" />
-                        <p className="text-neutral-700">
-                          <span className="font-semibold text-orange-700">Crítica:</span> {avaliacao.critica}
+                        <p className="text-neutral-700 dark:text-neutral-300">
+                          <span className="font-semibold text-orange-700 dark:text-orange-400">Crítica:</span> {avaliacao.critica}
                         </p>
                       </div>
                     )}
@@ -211,7 +211,7 @@ export default function GestorPerfilPage() {
               ))}
 
               {(!gestor.avaliacoes || gestor.avaliacoes.length === 0) && (
-                <p className="text-center text-neutral-500 py-8">
+                <p className="text-center text-neutral-500 dark:text-neutral-400 py-8">
                   Este gestor ainda não recebeu avaliações
                 </p>
               )}

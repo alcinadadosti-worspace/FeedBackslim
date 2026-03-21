@@ -103,8 +103,8 @@ export default function GestorDashboardPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-display font-bold text-neutral-900">Meu Dashboard</h1>
-          <p className="text-neutral-600 mt-1">
+          <h1 className="text-3xl font-display font-bold text-neutral-900 dark:text-neutral-100">Meu Dashboard</h1>
+          <p className="text-neutral-600 dark:text-neutral-300 mt-1">
             Acompanhe suas avaliações e feedbacks
           </p>
         </div>
@@ -114,10 +114,10 @@ export default function GestorDashboardPage() {
           <div className="flex flex-col md:flex-row items-center gap-6">
             <Avatar src={data.gestor?.foto || user?.avatar} alt={user?.nome} size="xl" />
             <div className="flex-1 text-center md:text-left">
-              <h2 className="text-2xl font-bold text-neutral-900">{user?.nome}</h2>
-              <p className="text-neutral-600">{data.gestor?.cargo}</p>
+              <h2 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{user?.nome}</h2>
+              <p className="text-neutral-600 dark:text-neutral-300">{data.gestor?.cargo}</p>
               {data.gestor?.departamento && (
-                <p className="text-sm text-neutral-500">{data.gestor.departamento}</p>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">{data.gestor.departamento}</p>
               )}
 
               {data.gestor?.badges?.length > 0 && (
@@ -130,19 +130,19 @@ export default function GestorDashboardPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-4 bg-gold-50 border-2 border-neutral-900">
+              <div className="text-center p-4 bg-gold-50 dark:bg-gold-900/20 border-2 border-neutral-900 dark:border-neutral-100">
                 <Star className="w-8 h-8 text-gold-500 mx-auto mb-2" />
-                <p className="text-3xl font-bold text-neutral-900">
+                <p className="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
                   {data.gestor?.mediaAvaliacao?.toFixed(1) || '0.0'}
                 </p>
-                <p className="text-sm text-neutral-600">Média</p>
+                <p className="text-sm text-neutral-600 dark:text-neutral-300">Média</p>
               </div>
-              <div className="text-center p-4 bg-primary-50 border-2 border-neutral-900">
+              <div className="text-center p-4 bg-primary-50 dark:bg-primary-900/30 border-2 border-neutral-900 dark:border-neutral-100">
                 <BarChart3 className="w-8 h-8 text-primary-600 mx-auto mb-2" />
-                <p className="text-3xl font-bold text-neutral-900">
+                <p className="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
                   {data.gestor?.totalAvaliacoes || 0}
                 </p>
-                <p className="text-sm text-neutral-600">Avaliações</p>
+                <p className="text-sm text-neutral-600 dark:text-neutral-300">Avaliações</p>
               </div>
             </div>
           </div>
@@ -150,32 +150,32 @@ export default function GestorDashboardPage() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card className="bg-green-50">
+          <Card className="bg-green-50 dark:bg-green-900/20">
             <div className="flex items-center gap-4">
               <ThumbsUp className="w-10 h-10 text-green-600" />
               <div>
-                <p className="text-3xl font-bold text-neutral-900">{data.feedbackStats?.elogios || 0}</p>
-                <p className="text-neutral-600">Elogios</p>
+                <p className="text-3xl font-bold text-neutral-900 dark:text-neutral-100">{data.feedbackStats?.elogios || 0}</p>
+                <p className="text-neutral-600 dark:text-neutral-300">Elogios</p>
               </div>
             </div>
           </Card>
 
-          <Card className="bg-blue-50">
+          <Card className="bg-blue-50 dark:bg-blue-900/20">
             <div className="flex items-center gap-4">
               <Lightbulb className="w-10 h-10 text-blue-600" />
               <div>
-                <p className="text-3xl font-bold text-neutral-900">{data.feedbackStats?.sugestoes || 0}</p>
-                <p className="text-neutral-600">Sugestões</p>
+                <p className="text-3xl font-bold text-neutral-900 dark:text-neutral-100">{data.feedbackStats?.sugestoes || 0}</p>
+                <p className="text-neutral-600 dark:text-neutral-300">Sugestões</p>
               </div>
             </div>
           </Card>
 
-          <Card className="bg-orange-50">
+          <Card className="bg-orange-50 dark:bg-orange-900/20">
             <div className="flex items-center gap-4">
               <AlertCircle className="w-10 h-10 text-orange-600" />
               <div>
-                <p className="text-3xl font-bold text-neutral-900">{data.feedbackStats?.criticas || 0}</p>
-                <p className="text-neutral-600">Críticas</p>
+                <p className="text-3xl font-bold text-neutral-900 dark:text-neutral-100">{data.feedbackStats?.criticas || 0}</p>
+                <p className="text-neutral-600 dark:text-neutral-300">Críticas</p>
               </div>
             </div>
           </Card>
@@ -206,7 +206,7 @@ export default function GestorDashboardPage() {
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <p className="text-center text-neutral-500 py-8">
+                <p className="text-center text-neutral-500 dark:text-neutral-400 py-8">
                   Dados insuficientes para gerar o gráfico
                 </p>
               )}
@@ -233,7 +233,7 @@ export default function GestorDashboardPage() {
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <p className="text-center text-neutral-500 py-8">
+                <p className="text-center text-neutral-500 dark:text-neutral-400 py-8">
                   Dados insuficientes para gerar o gráfico
                 </p>
               )}
@@ -250,15 +250,15 @@ export default function GestorDashboardPage() {
           <CardContent>
             <div className="space-y-4">
               {data.avaliacoesRecentes?.map((avaliacao: any) => (
-                <div key={avaliacao.id} id={`avaliacao-${avaliacao.id}`} className="p-4 border-2 border-neutral-200">
+                <div key={avaliacao.id} id={`avaliacao-${avaliacao.id}`} className="p-4 border-2 border-neutral-200 dark:border-neutral-700">
                   <div className="flex items-center justify-between mb-3 gap-4">
                     <div className="flex items-center gap-3">
                       <Avatar src={null} alt={avaliacao.autor?.nome} size="sm" />
                       <div>
-                        <p className="font-semibold text-neutral-900">
+                        <p className="font-semibold text-neutral-900 dark:text-neutral-100">
                           {avaliacao.autor?.nome || 'Colaborador'}
                         </p>
-                        <p className="text-xs text-neutral-500">
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
                           {format(new Date(avaliacao.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                         </p>
                       </div>
@@ -288,20 +288,20 @@ export default function GestorDashboardPage() {
 
                   <div className="space-y-2">
                     {avaliacao.elogio && (
-                      <p className="text-sm">
-                        <span className="font-semibold text-green-700">Elogio:</span>{' '}
+                      <p className="text-sm dark:text-neutral-300">
+                        <span className="font-semibold text-green-700 dark:text-green-400">Elogio:</span>{' '}
                         {avaliacao.elogio}
                       </p>
                     )}
                     {avaliacao.sugestao && (
-                      <p className="text-sm">
-                        <span className="font-semibold text-blue-700">Sugestão:</span>{' '}
+                      <p className="text-sm dark:text-neutral-300">
+                        <span className="font-semibold text-blue-700 dark:text-blue-400">Sugestão:</span>{' '}
                         {avaliacao.sugestao}
                       </p>
                     )}
                     {avaliacao.critica && (
-                      <p className="text-sm">
-                        <span className="font-semibold text-orange-700">Crítica:</span>{' '}
+                      <p className="text-sm dark:text-neutral-300">
+                        <span className="font-semibold text-orange-700 dark:text-orange-400">Crítica:</span>{' '}
                         {avaliacao.critica}
                       </p>
                     )}
@@ -310,7 +310,7 @@ export default function GestorDashboardPage() {
               ))}
 
               {(!data.avaliacoesRecentes || data.avaliacoesRecentes.length === 0) && (
-                <p className="text-center text-neutral-500 py-8">
+                <p className="text-center text-neutral-500 dark:text-neutral-400 py-8">
                   Você ainda não recebeu avaliações
                 </p>
               )}

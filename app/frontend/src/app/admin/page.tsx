@@ -90,8 +90,8 @@ export default function AdminDashboardPage() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-display font-bold text-neutral-900">Painel Administrativo</h1>
-            <p className="text-neutral-600 mt-1">
+            <h1 className="text-3xl font-display font-bold text-neutral-900 dark:text-neutral-100">Painel Administrativo</h1>
+            <p className="text-neutral-600 dark:text-neutral-300 mt-1">
               Visão geral de avaliações e denúncias
             </p>
           </div>
@@ -114,59 +114,59 @@ export default function AdminDashboardPage() {
           <>
             {/* Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-8">
-              <Card className="bg-blue-50">
+              <Card className="bg-blue-50 dark:bg-blue-900/20">
                 <div className="flex flex-col gap-1">
                   <Users className="w-6 h-6 text-blue-600" />
-                  <p className="text-2xl font-bold text-neutral-900">{data?.stats?.totalUsers || 0}</p>
-                  <p className="text-xs text-neutral-600">Usuários</p>
+                  <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{data?.stats?.totalUsers || 0}</p>
+                  <p className="text-xs text-neutral-600 dark:text-neutral-300">Usuários</p>
                 </div>
               </Card>
 
-              <Card className="bg-primary-50">
+              <Card className="bg-primary-50 dark:bg-primary-900/30">
                 <div className="flex flex-col gap-1">
                   <Users className="w-6 h-6 text-primary-600" />
-                  <p className="text-2xl font-bold text-neutral-900">{data?.stats?.totalGestores || 0}</p>
-                  <p className="text-xs text-neutral-600">Gestores</p>
+                  <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{data?.stats?.totalGestores || 0}</p>
+                  <p className="text-xs text-neutral-600 dark:text-neutral-300">Gestores</p>
                 </div>
               </Card>
 
-              <Card className="bg-gold-50">
+              <Card className="bg-gold-50 dark:bg-gold-900/20">
                 <div className="flex flex-col gap-1">
                   <Star className="w-6 h-6 text-gold-600" />
-                  <p className="text-2xl font-bold text-neutral-900">{data?.stats?.totalAvaliacoes || 0}</p>
-                  <p className="text-xs text-neutral-600">Avaliações</p>
+                  <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{data?.stats?.totalAvaliacoes || 0}</p>
+                  <p className="text-xs text-neutral-600 dark:text-neutral-300">Avaliações</p>
                 </div>
               </Card>
 
-              <Card className="bg-yellow-50">
+              <Card className="bg-yellow-50 dark:bg-yellow-900/20">
                 <div className="flex flex-col gap-1">
                   <BarChart3 className="w-6 h-6 text-yellow-600" />
-                  <p className="text-2xl font-bold text-neutral-900">{data?.stats?.mediaGeralAvaliacoes ?? '—'}</p>
-                  <p className="text-xs text-neutral-600">Média Geral</p>
+                  <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{data?.stats?.mediaGeralAvaliacoes ?? '—'}</p>
+                  <p className="text-xs text-neutral-600 dark:text-neutral-300">Média Geral</p>
                 </div>
               </Card>
 
-              <Card className="bg-purple-50">
+              <Card className="bg-purple-50 dark:bg-purple-900/20">
                 <div className="flex flex-col gap-1">
                   <MessageSquare className="w-6 h-6 text-purple-600" />
-                  <p className="text-2xl font-bold text-neutral-900">{data?.stats?.totalFeedbacksColaboradores || 0}</p>
-                  <p className="text-xs text-neutral-600">Feedbacks Col.</p>
+                  <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{data?.stats?.totalFeedbacksColaboradores || 0}</p>
+                  <p className="text-xs text-neutral-600 dark:text-neutral-300">Feedbacks Col.</p>
                 </div>
               </Card>
 
-              <Card className="bg-red-50">
+              <Card className="bg-red-50 dark:bg-red-900/20">
                 <div className="flex flex-col gap-1">
                   <AlertTriangle className="w-6 h-6 text-red-600" />
-                  <p className="text-2xl font-bold text-neutral-900">{data?.stats?.totalDenuncias || 0}</p>
-                  <p className="text-xs text-neutral-600">Denúncias</p>
+                  <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{data?.stats?.totalDenuncias || 0}</p>
+                  <p className="text-xs text-neutral-600 dark:text-neutral-300">Denúncias</p>
                 </div>
               </Card>
 
-              <Card className="bg-orange-50">
+              <Card className="bg-orange-50 dark:bg-orange-900/20">
                 <div className="flex flex-col gap-1">
                   <Clock className="w-6 h-6 text-orange-600" />
-                  <p className="text-2xl font-bold text-neutral-900">{data?.stats?.denunciasPendentes || 0}</p>
-                  <p className="text-xs text-neutral-600">Pendentes</p>
+                  <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{data?.stats?.denunciasPendentes || 0}</p>
+                  <p className="text-xs text-neutral-600 dark:text-neutral-300">Pendentes</p>
                 </div>
               </Card>
             </div>
@@ -187,15 +187,15 @@ export default function AdminDashboardPage() {
                     {data?.topGestores?.slice(0, 5).map((gestor: any, index: number) => (
                       <div
                         key={gestor.id}
-                        className="flex items-center gap-3 p-3 border-2 border-neutral-200"
+                        className="flex items-center gap-3 p-3 border-2 border-neutral-200 dark:border-neutral-700"
                       >
                         <span className="w-8 h-8 bg-gold-400 border-2 border-neutral-900 flex items-center justify-center font-bold">
                           {index + 1}
                         </span>
                         <Avatar src={gestor.foto} alt={gestor.user?.nome} size="sm" />
                         <div className="flex-1">
-                          <p className="font-semibold">{gestor.user?.nome}</p>
-                          <p className="text-xs text-neutral-500">{gestor.cargo}</p>
+                          <p className="font-semibold dark:text-neutral-100">{gestor.user?.nome}</p>
+                          <p className="text-xs text-neutral-500 dark:text-neutral-400">{gestor.cargo}</p>
                         </div>
                         <SimpleRating value={gestor.mediaAvaliacao} size="sm" />
                       </div>
@@ -229,7 +229,7 @@ export default function AdminDashboardPage() {
                       </PieChart>
                     </ResponsiveContainer>
                   ) : (
-                    <p className="text-center text-neutral-500 py-8">
+                    <p className="text-center text-neutral-500 dark:text-neutral-400 py-8">
                       Nenhuma denúncia registrada
                     </p>
                   )}
@@ -239,7 +239,7 @@ export default function AdminDashboardPage() {
 
             {/* Gestores com mais denúncias */}
             {data?.gestoresDenunciados?.length > 0 && (
-              <Card className="mb-8 bg-red-50">
+              <Card className="mb-8 bg-red-50 dark:bg-red-900/20">
                 <CardTitle className="flex items-center gap-2 mb-6">
                   <AlertTriangle className="w-6 h-6 text-red-600" />
                   Gestores com Denúncias
@@ -247,12 +247,12 @@ export default function AdminDashboardPage() {
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {data.gestoresDenunciados.map((item: any) => (
-                      <div key={item.gestor?.id} className="p-4 bg-white border-2 border-neutral-900">
+                      <div key={item.gestor?.id} className="p-4 bg-white dark:bg-neutral-700 border-2 border-neutral-900 dark:border-neutral-500">
                         <div className="flex items-center gap-3">
                           <Avatar src={item.gestor?.foto} alt={item.gestor?.user?.nome} size="md" />
                           <div className="flex-1">
-                            <p className="font-bold">{item.gestor?.user?.nome}</p>
-                            <p className="text-sm text-neutral-600">{item.gestor?.cargo}</p>
+                            <p className="font-bold dark:text-neutral-100">{item.gestor?.user?.nome}</p>
+                            <p className="text-sm text-neutral-600 dark:text-neutral-300">{item.gestor?.cargo}</p>
                           </div>
                           <Badge variant="danger">{item.totalDenuncias}</Badge>
                         </div>
@@ -270,12 +270,12 @@ export default function AdminDashboardPage() {
                 <CardContent>
                   <div className="space-y-3 max-h-96 overflow-y-auto">
                     {data?.avaliacoesRecentes?.map((avaliacao: any) => (
-                      <div key={avaliacao.id} className="p-3 border-2 border-neutral-200">
+                      <div key={avaliacao.id} className="p-3 border-2 border-neutral-200 dark:border-neutral-700">
                         <div className="flex items-center justify-between mb-2">
-                          <p className="font-semibold text-sm">{avaliacao.gestor?.user?.nome}</p>
+                          <p className="font-semibold text-sm dark:text-neutral-100">{avaliacao.gestor?.user?.nome}</p>
                           <SimpleRating value={avaliacao.nota} size="sm" />
                         </div>
-                        <p className="text-xs text-neutral-500">
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
                           Anônimo · {format(new Date(avaliacao.createdAt), 'dd/MM/yyyy', { locale: ptBR })}
                         </p>
                       </div>
@@ -297,20 +297,20 @@ export default function AdminDashboardPage() {
                 <CardContent>
                   <div className="space-y-3 max-h-96 overflow-y-auto">
                     {data?.denunciasRecentes?.map((denuncia: any) => (
-                      <div key={denuncia.id} className="p-3 border-2 border-red-200 bg-red-50">
+                      <div key={denuncia.id} className="p-3 border-2 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
                         <div className="flex items-center justify-between mb-2">
-                          <p className="font-semibold text-sm">{denuncia.gestor?.user?.nome}</p>
+                          <p className="font-semibold text-sm dark:text-neutral-100">{denuncia.gestor?.user?.nome}</p>
                           <Badge variant="danger">{denuncia.tipo.replace(/_/g, ' ')}</Badge>
                         </div>
-                        <p className="text-xs text-neutral-600 line-clamp-2">{denuncia.descricao}</p>
-                        <p className="text-xs text-neutral-400 mt-1">
+                        <p className="text-xs text-neutral-600 dark:text-neutral-300 line-clamp-2">{denuncia.descricao}</p>
+                        <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
                           {format(new Date(denuncia.createdAt), 'dd/MM/yyyy', { locale: ptBR })}
                         </p>
                       </div>
                     ))}
 
                     {(!data?.denunciasRecentes || data.denunciasRecentes.length === 0) && (
-                      <p className="text-center text-neutral-500 py-4">
+                      <p className="text-center text-neutral-500 dark:text-neutral-400 py-4">
                         Nenhuma denúncia recente
                       </p>
                     )}

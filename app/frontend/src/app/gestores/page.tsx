@@ -52,8 +52,8 @@ export default function GestoresPage() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-display font-bold text-neutral-900">Gestores</h1>
-            <p className="text-neutral-600 mt-1">
+            <h1 className="text-3xl font-display font-bold text-neutral-900 dark:text-neutral-100">Gestores</h1>
+            <p className="text-neutral-600 dark:text-neutral-300 mt-1">
               Conheça os gestores e veja suas avaliações
             </p>
           </div>
@@ -95,10 +95,10 @@ export default function GestoresPage() {
                   <div className="flex items-start gap-4">
                     <Avatar src={gestor.foto} alt={gestor.user?.nome} size="lg" />
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-lg text-neutral-900 truncate">
+                      <h3 className="font-bold text-lg text-neutral-900 dark:text-neutral-100 truncate">
                         {gestor.user?.nome}
                       </h3>
-                      <p className="text-neutral-600 text-sm">{gestor.cargo}</p>
+                      <p className="text-neutral-600 dark:text-neutral-300 text-sm">{gestor.cargo}</p>
                       {gestor.departamento && (
                         <Badge variant="neutral" className="mt-2">
                           {gestor.departamento}
@@ -110,7 +110,7 @@ export default function GestoresPage() {
                   <div className="mt-4 pt-4 border-t-2 border-neutral-200">
                     <div className="flex items-center justify-between">
                       <SimpleRating value={gestor.mediaAvaliacao} />
-                      <span className="text-sm text-neutral-500">
+                      <span className="text-sm text-neutral-500 dark:text-neutral-400">
                         {gestor.totalAvaliacoes} avaliações
                       </span>
                     </div>

@@ -83,9 +83,9 @@ export default function ConsultarDenunciaPage() {
             <div className="w-12 h-12 bg-blue-400 border-3 border-neutral-900 flex items-center justify-center">
               <Search className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-3xl font-display font-bold text-neutral-900">Consultar Denúncia</h1>
+            <h1 className="text-3xl font-display font-bold text-neutral-900 dark:text-neutral-100">Consultar Denúncia</h1>
           </div>
-          <p className="text-neutral-600">
+          <p className="text-neutral-600 dark:text-neutral-300">
             Digite o código de protocolo recebido ao registrar sua denúncia para consultar o andamento.
           </p>
         </div>
@@ -135,15 +135,15 @@ export default function ConsultarDenunciaPage() {
 
               {/* Informações básicas */}
               <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-neutral-50 border border-neutral-200">
-                  <p className="text-xs text-neutral-400 mb-1">Tipo</p>
-                  <p className="text-sm font-semibold text-neutral-800">
+                <div className="p-3 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600">
+                  <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-1">Tipo</p>
+                  <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">
                     {tipoManifestacaoLabels[resultado.tipoManifestacao] || resultado.tipoManifestacao || '—'}
                   </p>
                 </div>
-                <div className="p-3 bg-neutral-50 border border-neutral-200">
-                  <p className="text-xs text-neutral-400 mb-1">Registrada em</p>
-                  <p className="text-sm font-semibold text-neutral-800">
+                <div className="p-3 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600">
+                  <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-1">Registrada em</p>
+                  <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">
                     {resultado.createdAt
                       ? format(new Date(resultado.createdAt), 'dd/MM/yyyy', { locale: ptBR })
                       : '—'}
@@ -151,8 +151,8 @@ export default function ConsultarDenunciaPage() {
                 </div>
                 {resultado.updatedAt && resultado.updatedAt !== resultado.createdAt && (
                   <div className="p-3 bg-neutral-50 border border-neutral-200 col-span-2">
-                    <p className="text-xs text-neutral-400 mb-1">Última atualização</p>
-                    <p className="text-sm font-semibold text-neutral-800">
+                    <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-1">Última atualização</p>
+                    <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">
                       {format(new Date(resultado.updatedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                     </p>
                   </div>
@@ -161,23 +161,23 @@ export default function ConsultarDenunciaPage() {
 
               {/* Comentário do RH */}
               {resultado.comentarioRH ? (
-                <div className="p-4 bg-blue-50 border-2 border-blue-200">
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800">
                   <div className="flex items-center gap-2 mb-2">
                     <MessageSquare className="w-4 h-4 text-blue-600" />
-                    <p className="text-sm font-bold text-blue-800">Comentário do RH</p>
+                    <p className="text-sm font-bold text-blue-800 dark:text-blue-300">Comentário do RH</p>
                   </div>
-                  <p className="text-sm text-neutral-700">{resultado.comentarioRH}</p>
+                  <p className="text-sm text-neutral-700 dark:text-neutral-300">{resultado.comentarioRH}</p>
                 </div>
               ) : (
-                <div className="p-4 bg-neutral-50 border border-neutral-200 text-center">
-                  <p className="text-sm text-neutral-500">
+                <div className="p-4 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 text-center">
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400">
                     Nenhum comentário do RH ainda. Acompanhe as atualizações pelo código de protocolo.
                   </p>
                 </div>
               )}
 
               <div className="pt-2 text-center">
-                <p className="text-xs text-neutral-400">
+                <p className="text-xs text-neutral-400 dark:text-neutral-500">
                   Protocolo: <span className="font-bold tracking-widest">{resultado.codigoProtocolo}</span>
                 </p>
               </div>
@@ -186,7 +186,7 @@ export default function ConsultarDenunciaPage() {
         )}
 
         <div className="mt-6 text-center">
-          <Link href="/" className="text-sm text-neutral-500 hover:text-neutral-700 transition-colors">
+          <Link href="/" className="text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors">
             ← Voltar ao início
           </Link>
         </div>

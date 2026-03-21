@@ -93,25 +93,25 @@ export default function FeedbacksPage() {
   }) => {
     if (pages <= 1) return null;
     return (
-      <div className="flex items-center justify-between mt-6 pt-4 border-t-2 border-neutral-200">
-        <span className="text-sm text-neutral-500">{total} feedbacks no total</span>
+      <div className="flex items-center justify-between mt-6 pt-4 border-t-2 border-neutral-200 dark:border-neutral-700">
+        <span className="text-sm text-neutral-500 dark:text-neutral-400">{total} feedbacks no total</span>
         <div className="flex items-center gap-2">
           <button
             onClick={() => onPage(page - 1)}
             disabled={page <= 1}
-            className="p-2 border-2 border-neutral-900 hover:bg-neutral-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="p-2 border-2 border-neutral-900 dark:border-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-4 h-4 dark:text-neutral-100" />
           </button>
-          <span className="text-sm font-semibold px-2">
+          <span className="text-sm font-semibold px-2 dark:text-neutral-100">
             {page} / {pages}
           </span>
           <button
             onClick={() => onPage(page + 1)}
             disabled={page >= pages}
-            className="p-2 border-2 border-neutral-900 hover:bg-neutral-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="p-2 border-2 border-neutral-900 dark:border-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-4 h-4 dark:text-neutral-100" />
           </button>
         </div>
       </div>
@@ -123,18 +123,18 @@ export default function FeedbacksPage() {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-display font-bold text-neutral-900">Feedbacks Públicos</h1>
-          <p className="text-neutral-600 mt-1">Feedbacks que foram compartilhados publicamente</p>
+          <h1 className="text-3xl font-display font-bold text-neutral-900 dark:text-neutral-100">Feedbacks Públicos</h1>
+          <p className="text-neutral-600 dark:text-neutral-300 mt-1">Feedbacks que foram compartilhados publicamente</p>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 p-1 bg-neutral-100 border-2 border-neutral-200">
+        <div className="flex gap-2 mb-6 p-1 bg-neutral-100 dark:bg-neutral-800 border-2 border-neutral-200 dark:border-neutral-700">
           <button
             onClick={() => handleTabChange('gestores')}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 font-semibold text-sm transition-colors ${
               tab === 'gestores'
-                ? 'bg-white border-2 border-neutral-900 text-neutral-900'
-                : 'text-neutral-500 hover:text-neutral-700'
+                ? 'bg-white dark:bg-neutral-700 border-2 border-neutral-900 dark:border-neutral-100 text-neutral-900 dark:text-neutral-100'
+                : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200'
             }`}
           >
             <UserCheck className="w-4 h-4" />
@@ -147,8 +147,8 @@ export default function FeedbacksPage() {
             onClick={() => handleTabChange('colaboradores')}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 font-semibold text-sm transition-colors ${
               tab === 'colaboradores'
-                ? 'bg-white border-2 border-neutral-900 text-neutral-900'
-                : 'text-neutral-500 hover:text-neutral-700'
+                ? 'bg-white dark:bg-neutral-700 border-2 border-neutral-900 dark:border-neutral-100 text-neutral-900 dark:text-neutral-100'
+                : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200'
             }`}
           >
             <Users className="w-4 h-4" />
@@ -179,39 +179,39 @@ export default function FeedbacksPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-3 flex-wrap">
                           <Link href={`/gestores/${av.gestor?.id}`} className="hover:underline">
-                            <span className="font-bold text-neutral-900">{av.gestor?.user?.nome || 'Gestor'}</span>
+                            <span className="font-bold text-neutral-900 dark:text-neutral-100">{av.gestor?.user?.nome || 'Gestor'}</span>
                             {av.gestor?.cargo && (
-                              <span className="text-sm text-neutral-500 ml-2">{av.gestor.cargo}</span>
+                              <span className="text-sm text-neutral-500 dark:text-neutral-400 ml-2">{av.gestor.cargo}</span>
                             )}
                           </Link>
                           <div className="flex items-center gap-3">
                             <SimpleRating value={av.nota} />
-                            <span className="text-xs text-neutral-400">{formatDate(av.createdAt)}</span>
+                            <span className="text-xs text-neutral-400 dark:text-neutral-500">{formatDate(av.createdAt)}</span>
                           </div>
                         </div>
 
                         <div className="mt-3 space-y-2">
                           {av.elogio && (
-                            <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200">
+                            <div className="flex items-start gap-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
                               <ThumbsUp className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-                              <p className="text-sm text-neutral-700">
-                                <span className="font-semibold text-green-700">Elogio: </span>{av.elogio}
+                              <p className="text-sm text-neutral-700 dark:text-neutral-300">
+                                <span className="font-semibold text-green-700 dark:text-green-400">Elogio: </span>{av.elogio}
                               </p>
                             </div>
                           )}
                           {av.sugestao && (
-                            <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200">
+                            <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
                               <Lightbulb className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
-                              <p className="text-sm text-neutral-700">
-                                <span className="font-semibold text-blue-700">Sugestão: </span>{av.sugestao}
+                              <p className="text-sm text-neutral-700 dark:text-neutral-300">
+                                <span className="font-semibold text-blue-700 dark:text-blue-400">Sugestão: </span>{av.sugestao}
                               </p>
                             </div>
                           )}
                           {av.critica && (
-                            <div className="flex items-start gap-2 p-3 bg-orange-50 border border-orange-200">
+                            <div className="flex items-start gap-2 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
                               <AlertCircle className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
-                              <p className="text-sm text-neutral-700">
-                                <span className="font-semibold text-orange-700">Crítica: </span>{av.critica}
+                              <p className="text-sm text-neutral-700 dark:text-neutral-300">
+                                <span className="font-semibold text-orange-700 dark:text-orange-400">Crítica: </span>{av.critica}
                               </p>
                             </div>
                           )}
@@ -239,40 +239,40 @@ export default function FeedbacksPage() {
                 {feedbacksCol.map((fb: any) => (
                   <Card key={fb.id}>
                     <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 bg-neutral-200 border-2 border-neutral-300 flex items-center justify-center font-bold text-neutral-600 shrink-0">
+                      <div className="w-10 h-10 bg-neutral-200 dark:bg-neutral-600 border-2 border-neutral-300 dark:border-neutral-500 flex items-center justify-center font-bold text-neutral-600 dark:text-neutral-100 shrink-0">
                         {fb.colaboradorNome?.charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-3 flex-wrap">
-                          <span className="font-bold text-neutral-900">{fb.colaboradorNome}</span>
+                          <span className="font-bold text-neutral-900 dark:text-neutral-100">{fb.colaboradorNome}</span>
                           <div className="flex items-center gap-3">
                             <SimpleRating value={fb.nota} />
-                            <span className="text-xs text-neutral-400">{formatDate(fb.createdAt)}</span>
+                            <span className="text-xs text-neutral-400 dark:text-neutral-500">{formatDate(fb.createdAt)}</span>
                           </div>
                         </div>
 
                         <div className="mt-3 space-y-2">
                           {fb.elogio && (
-                            <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200">
+                            <div className="flex items-start gap-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
                               <ThumbsUp className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-                              <p className="text-sm text-neutral-700">
-                                <span className="font-semibold text-green-700">Elogio: </span>{fb.elogio}
+                              <p className="text-sm text-neutral-700 dark:text-neutral-300">
+                                <span className="font-semibold text-green-700 dark:text-green-400">Elogio: </span>{fb.elogio}
                               </p>
                             </div>
                           )}
                           {fb.sugestao && (
-                            <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200">
+                            <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
                               <Lightbulb className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
-                              <p className="text-sm text-neutral-700">
-                                <span className="font-semibold text-blue-700">Sugestão: </span>{fb.sugestao}
+                              <p className="text-sm text-neutral-700 dark:text-neutral-300">
+                                <span className="font-semibold text-blue-700 dark:text-blue-400">Sugestão: </span>{fb.sugestao}
                               </p>
                             </div>
                           )}
                           {fb.critica && (
-                            <div className="flex items-start gap-2 p-3 bg-orange-50 border border-orange-200">
+                            <div className="flex items-start gap-2 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
                               <AlertCircle className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
-                              <p className="text-sm text-neutral-700">
-                                <span className="font-semibold text-orange-700">Crítica: </span>{fb.critica}
+                              <p className="text-sm text-neutral-700 dark:text-neutral-300">
+                                <span className="font-semibold text-orange-700 dark:text-orange-400">Crítica: </span>{fb.critica}
                               </p>
                             </div>
                           )}
