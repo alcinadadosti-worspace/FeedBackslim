@@ -12,6 +12,8 @@ import avaliacaoRoutes from './routes/avaliacao.routes';
 import denunciaRoutes from './routes/denuncia.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import uploadRoutes from './routes/upload.routes';
+import colaboradorRoutes from './routes/colaborador.routes';
+import feedbackColaboradorRoutes from './routes/feedbackColaborador.routes';
 
 dotenv.config();
 
@@ -36,6 +38,8 @@ app.use('/api/avaliacoes', avaliacaoRoutes);
 app.use('/api/denuncias', denunciaRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/colaboradores', colaboradorRoutes);
+app.use('/api/feedbacks/colaborador', feedbackColaboradorRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
