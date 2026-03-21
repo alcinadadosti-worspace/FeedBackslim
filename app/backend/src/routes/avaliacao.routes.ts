@@ -22,6 +22,7 @@ const createAvaliacaoSchema = z.object({
 // Listar avaliações públicas de todos os gestores (sem autenticação)
 router.get('/publicas', async (req: AuthRequest, res: Response) => {
   try {
+    res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
     const snap = await col('avaliacoes')
       .where('publica', '==', true)
       .orderBy('createdAt', 'desc')

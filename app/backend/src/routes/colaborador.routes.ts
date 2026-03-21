@@ -5,6 +5,7 @@ const router = Router();
 
 // Listar todos os colaboradores (público)
 router.get('/', (req: Request, res: Response) => {
+  res.set('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
   const sorted = [...COLABORADORES].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   res.json(sorted);
 });

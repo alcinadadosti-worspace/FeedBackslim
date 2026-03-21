@@ -117,6 +117,7 @@ router.post('/slack/sync', authenticateToken, requireAdmin, async (req: AuthRequ
 // Listar todos os gestores (público - sem autenticação)
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {
+    res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
     const gestoresSnap = await col('gestores').orderBy('mediaAvaliacao', 'desc').get();
     const gestores = gestoresSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
 
@@ -155,6 +156,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
 // Ranking de gestores (público - sem autenticação)
 router.get('/ranking', async (req: AuthRequest, res: Response) => {
   try {
+    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
     const gestoresSnap = await col('gestores').where('totalAvaliacoes', '>=', 1).get();
     const gestores = gestoresSnap.docs
       .map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }))
@@ -196,6 +198,7 @@ router.get('/ranking', async (req: AuthRequest, res: Response) => {
 // Obter gestor por ID (público - sem autenticação)
 router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
+    res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
     const gestorSnap = await docRef('gestores', req.params.id).get();
     const gestor = snapData<any>(gestorSnap as any);
 

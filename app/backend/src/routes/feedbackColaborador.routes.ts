@@ -147,6 +147,7 @@ router.get('/:id/aceitar', async (req: Request, res: Response) => {
 // Ranking de colaboradores (top 10 por média de feedbacks)
 router.get('/ranking', async (req: Request, res: Response) => {
   try {
+    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
     const snap = await col('feedbacksColaborador').get();
     const feedbacks = snap.docs.map((d: any) => normalizeFirestoreData(d.data()) as any);
 
@@ -184,6 +185,7 @@ router.get('/ranking', async (req: Request, res: Response) => {
 // Listar todos os feedbacks públicos (todos os colaboradores)
 router.get('/publicos', async (req: Request, res: Response) => {
   try {
+    res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
     const snap = await col('feedbacksColaborador')
       .where('publica', '==', true)
       .get();
@@ -202,6 +204,7 @@ router.get('/publicos', async (req: Request, res: Response) => {
 // Listar feedbacks públicos de um colaborador
 router.get('/publicos/:slackId', async (req: Request, res: Response) => {
   try {
+    res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
     const { slackId } = req.params;
     const snap = await col('feedbacksColaborador')
       .where('colaboradorSlackId', '==', slackId)
