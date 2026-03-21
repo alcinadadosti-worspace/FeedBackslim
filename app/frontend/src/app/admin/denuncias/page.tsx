@@ -86,8 +86,14 @@ export default function AdminDenunciasPage() {
     try {
       await denunciasAPI.updateStatus(denunciaId, newStatus, comentarioRH || undefined);
       toast.success('Status atualizado com sucesso!');
+      setDenuncias((prev) =>
+        prev.map((d) =>
+          d.id === denunciaId
+            ? { ...d, status: newStatus, ...(comentarioRH ? { comentarioRH } : {}) }
+            : d
+        )
+      );
       setComentarioRH('');
-      loadDenuncias();
       setSelectedDenuncia(null);
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Erro ao atualizar status');

@@ -227,13 +227,7 @@ router.patch('/:id/status', authenticateToken, requireAdmin, async (req: AuthReq
     if (data.comentarioRH !== undefined) updateData.comentarioRH = data.comentarioRH;
     await docRef('denuncias', req.params.id).set(updateData, { merge: true });
 
-    const updatedSnap = await docRef('denuncias', req.params.id).get();
-    const denuncia = snapData<any>(updatedSnap as any);
-    if (!denuncia) {
-      return res.status(404).json({ error: 'Denúncia não encontrada' });
-    }
-
-    res.json(denuncia);
+    res.json({ id: req.params.id, ...updateData });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors[0].message });
