@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { AlertTriangle, Shield, Eye, EyeOff, Send } from 'lucide-react';
+import { AlertTriangle, Shield, Eye, EyeOff, Send, Copy, CheckCheck } from 'lucide-react';
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { Card, CardTitle, CardContent } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -101,6 +101,8 @@ export default function OuvidoriaPage() {
   const [setorIdentificado, setSetorIdentificado] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [codigoProtocolo, setCodigoProtocolo] = useState<string | null>(null);
+  const [copiado, setCopiado] = useState(false);
 
   useEffect(() => {
     loadGestores();
@@ -187,7 +189,7 @@ export default function OuvidoriaPage() {
     setSubmitting(true);
 
     try {
-      await denunciasAPI.create({
+      const response = await denunciasAPI.create({
         gestorId: selectedGestorId,
         tipoManifestacao,
         temas,
@@ -203,8 +205,8 @@ export default function OuvidoriaPage() {
         ...(!anonima && { nomeIdentificado, setorIdentificado }),
       });
 
-      toast.success('Denuncia registrada com sucesso. O RH sera notificado.');
-      router.push('/');
+      toast.success('Denúncia registrada com sucesso. O RH será notificado.');
+      setCodigoProtocolo(response.data.codigoProtocolo);
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Erro ao registrar denúncia');
     } finally {
@@ -219,6 +221,66 @@ export default function OuvidoriaPage() {
       label: `${g.user?.nome} - ${g.cargo}`,
     })),
   ];
+
+  const handleCopiar = () => {
+    if (!codigoProtocolo) return;
+    navigator.clipboard.writeText(codigoProtocolo);
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 2000);
+  };
+
+  if (codigoProtocolo) {
+    return (
+      <PublicLayout>
+        <div className="max-w-lg mx-auto text-center py-8">
+          <div className="w-20 h-20 bg-green-100 border-3 border-neutral-900 flex items-center justify-center mx-auto mb-6">
+            <CheckCheck className="w-10 h-10 text-green-600" />
+          </div>
+          <h1 className="text-3xl font-display font-bold text-neutral-900 mb-2">Denúncia Registrada!</h1>
+          <p className="text-neutral-600 mb-8">
+            O RH foi notificado e irá analisar sua manifestação com sigilo.
+          </p>
+
+          <div className="bg-white border-3 border-neutral-900 p-8 shadow-brutal mb-6">
+            <p className="text-sm font-bold text-neutral-500 uppercase mb-3">Seu Código de Protocolo</p>
+            <div className="text-5xl font-black tracking-[0.3em] text-neutral-900 mb-4">
+              {codigoProtocolo}
+            </div>
+            <button
+              onClick={handleCopiar}
+              className="flex items-center gap-2 mx-auto px-4 py-2 border-2 border-neutral-900 text-sm font-semibold hover:bg-neutral-100 transition-colors"
+            >
+              {copiado ? <CheckCheck className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+              {copiado ? 'Copiado!' : 'Copiar código'}
+            </button>
+          </div>
+
+          <div className="p-4 bg-yellow-50 border-2 border-yellow-300 text-left mb-6">
+            <p className="font-bold text-yellow-800 mb-1">⚠️ Guarde este código!</p>
+            <p className="text-sm text-yellow-700">
+              Este código é a única forma de consultar o andamento da sua denúncia.
+              Ele não será enviado por e-mail ou qualquer outro canal.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link
+              href="/consultar-denuncia"
+              className="px-6 py-3 bg-neutral-900 text-white font-bold border-2 border-neutral-900 hover:bg-neutral-700 transition-colors"
+            >
+              Consultar Andamento
+            </Link>
+            <Link
+              href="/"
+              className="px-6 py-3 font-bold border-2 border-neutral-900 hover:bg-neutral-100 transition-colors"
+            >
+              Voltar ao Início
+            </Link>
+          </div>
+        </div>
+      </PublicLayout>
+    );
+  }
 
   return (
     <PublicLayout>

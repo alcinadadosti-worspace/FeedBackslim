@@ -27,8 +27,13 @@ const createDenunciaSchema = z.object({
 });
 
 const updateStatusSchema = z.object({
-  status: z.nativeEnum(StatusDenuncia)
+  status: z.nativeEnum(StatusDenuncia),
+  comentarioRH: z.string().optional()
 });
+
+function gerarCodigoProtocolo(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
 // Listar denúncias (apenas admin)
 router.get('/', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
@@ -135,6 +140,7 @@ router.post('/', denunciaLimiter, async (req: AuthRequest, res: Response) => {
     // Criar denúncia anônima (sem autorId)
     const now = new Date();
     const denunciaId = uuidv4();
+    const codigoProtocolo = gerarCodigoProtocolo();
 
     const tipo = (() => {
       const temas = data.temas || [];
@@ -167,6 +173,8 @@ router.post('/', denunciaLimiter, async (req: AuthRequest, res: Response) => {
       anonima: data.anonima,
       nomeIdentificado: !data.anonima ? (data.nomeIdentificado || null) : null,
       setorIdentificado: !data.anonima ? (data.setorIdentificado || null) : null,
+      codigoProtocolo,
+      comentarioRH: null,
       status: StatusDenuncia.PENDENTE,
       createdAt: now,
       updatedAt: now
@@ -196,6 +204,7 @@ router.post('/', denunciaLimiter, async (req: AuthRequest, res: Response) => {
       tipo,
       tipoManifestacao: data.tipoManifestacao,
       status: StatusDenuncia.PENDENTE,
+      codigoProtocolo,
       createdAt: now,
       message: 'Denúncia registrada com sucesso. O RH será notificado.'
     });
@@ -214,13 +223,9 @@ router.patch('/:id/status', authenticateToken, requireAdmin, async (req: AuthReq
     const data = updateStatusSchema.parse(req.body);
 
     const now = new Date();
-    await docRef('denuncias', req.params.id).set(
-      {
-        status: data.status,
-        updatedAt: now
-      },
-      { merge: true }
-    );
+    const updateData: any = { status: data.status, updatedAt: now };
+    if (data.comentarioRH !== undefined) updateData.comentarioRH = data.comentarioRH;
+    await docRef('denuncias', req.params.id).set(updateData, { merge: true });
 
     const updatedSnap = await docRef('denuncias', req.params.id).get();
     const denuncia = snapData<any>(updatedSnap as any);
@@ -234,6 +239,28 @@ router.patch('/:id/status', authenticateToken, requireAdmin, async (req: AuthReq
       return res.status(400).json({ error: error.errors[0].message });
     }
     res.status(500).json({ error: 'Erro ao atualizar status' });
+  }
+});
+
+// Consultar denúncia por código de protocolo (público - sem autenticação)
+router.get('/consultar/:codigo', async (req: AuthRequest, res: Response) => {
+  try {
+    const { codigo } = req.params;
+    const snap = await col('denuncias').where('codigoProtocolo', '==', codigo).limit(1).get();
+    if (snap.empty) {
+      return res.status(404).json({ error: 'Código de protocolo não encontrado' });
+    }
+    const denuncia = normalizeFirestoreData(snap.docs[0].data()) as any;
+    res.json({
+      codigoProtocolo: denuncia.codigoProtocolo,
+      status: denuncia.status,
+      tipoManifestacao: denuncia.tipoManifestacao,
+      comentarioRH: denuncia.comentarioRH || null,
+      createdAt: denuncia.createdAt,
+      updatedAt: denuncia.updatedAt
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao consultar denúncia' });
   }
 });
 

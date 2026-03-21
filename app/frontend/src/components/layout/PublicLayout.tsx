@@ -4,7 +4,7 @@ import { ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, MessageSquare } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Search } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 
 interface PublicLayoutProps {
@@ -47,6 +47,13 @@ export function PublicLayout({ children, showBackButton = true }: PublicLayoutPr
             >
               <MessageSquare className="w-4 h-4" />
               <span>Feedbacks</span>
+            </Link>
+            <Link
+              href="/consultar-denuncia"
+              className="flex items-center gap-1.5 text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
+            >
+              <Search className="w-4 h-4" />
+              <span>Consultar denúncia</span>
             </Link>
 
           {isAuthenticated && user?.role === 'RH_ADMIN' ? (

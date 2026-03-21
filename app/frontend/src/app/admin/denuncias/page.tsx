@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { ArrowLeft, AlertTriangle, Eye, EyeOff, ChevronDown, ChevronUp, User, Building2 } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Eye, EyeOff, ChevronDown, ChevronUp, User, Building2, Hash, MessageSquare } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -12,6 +12,7 @@ import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
+import { Textarea } from '@/components/ui/Textarea';
 import { Loading } from '@/components/ui/Loading';
 import { denunciasAPI } from '@/lib/api';
 import { format } from 'date-fns';
@@ -47,6 +48,7 @@ export default function AdminDenunciasPage() {
   const [tipo, setTipo] = useState('');
   const [status, setStatus] = useState('');
   const [selectedDenuncia, setSelectedDenuncia] = useState<any>(null);
+  const [comentarioRH, setComentarioRH] = useState('');
 
   useEffect(() => {
     loadDenuncias();
@@ -82,8 +84,9 @@ export default function AdminDenunciasPage() {
 
   const handleStatusChange = async (denunciaId: string, newStatus: string) => {
     try {
-      await denunciasAPI.updateStatus(denunciaId, newStatus);
+      await denunciasAPI.updateStatus(denunciaId, newStatus, comentarioRH || undefined);
       toast.success('Status atualizado com sucesso!');
+      setComentarioRH('');
       loadDenuncias();
       setSelectedDenuncia(null);
     } catch (error: any) {
@@ -149,7 +152,10 @@ export default function AdminDenunciasPage() {
                 {/* Header row - always visible */}
                 <div
                   className="flex items-start gap-4 cursor-pointer"
-                  onClick={() => setSelectedDenuncia(isOpen ? null : denuncia)}
+                  onClick={() => {
+                    setSelectedDenuncia(isOpen ? null : denuncia);
+                    setComentarioRH(denuncia.comentarioRH || '');
+                  }}
                 >
                   <Avatar src={denuncia.gestor?.foto} alt={denuncia.gestor?.user?.nome} size="md" />
 
@@ -265,6 +271,29 @@ export default function AdminDenunciasPage() {
                           <p className="text-xs font-semibold text-neutral-700">{denuncia.desejaRetorno.replace(/_/g, ' ')}</p>
                         </div>
                       )}
+                    </div>
+
+                    {/* Código de protocolo */}
+                    {denuncia.codigoProtocolo && (
+                      <div className="flex items-center gap-2 p-3 bg-neutral-100 border border-neutral-300">
+                        <Hash className="w-4 h-4 text-neutral-500" />
+                        <span className="text-xs text-neutral-500">Código de Protocolo:</span>
+                        <span className="font-black tracking-widest text-neutral-900">{denuncia.codigoProtocolo}</span>
+                      </div>
+                    )}
+
+                    {/* Comentário do RH */}
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <MessageSquare className="w-4 h-4 text-neutral-500" />
+                        <p className="text-sm font-bold text-neutral-700">Comentário para o denunciante</p>
+                      </div>
+                      <Textarea
+                        placeholder="Escreva um comentário que será visível para o denunciante ao consultar o código de protocolo..."
+                        value={comentarioRH}
+                        onChange={(e) => setComentarioRH(e.target.value)}
+                        rows={3}
+                      />
                     </div>
 
                     {/* Status actions */}
