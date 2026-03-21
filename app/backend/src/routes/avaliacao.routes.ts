@@ -19,6 +19,42 @@ const createAvaliacaoSchema = z.object({
   critica: z.string().optional()
 });
 
+// Listar avaliações públicas de todos os gestores (sem autenticação)
+router.get('/publicas', async (req: AuthRequest, res: Response) => {
+  try {
+    const snap = await col('avaliacoes')
+      .where('publica', '==', true)
+      .orderBy('createdAt', 'desc')
+      .limit(60)
+      .get();
+
+    const avaliacoes = snap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
+
+    const gestorIds = [...new Set(avaliacoes.map((a: any) => a.gestorId).filter(Boolean))];
+    const gestoresById = await getManyByIds<any>('gestores', gestorIds);
+    const userIds = Object.values(gestoresById).map((g: any) => g.userId).filter(Boolean);
+    const usersById = await getManyByIds<any>('users', userIds);
+
+    const data = avaliacoes.map((a: any) => {
+      const gestor = gestoresById[a.gestorId];
+      const user = gestor ? usersById[(gestor as any).userId] : undefined;
+      return {
+        ...a,
+        gestor: gestor ? {
+          id: (gestor as any).id,
+          cargo: (gestor as any).cargo,
+          foto: (gestor as any).foto,
+          user: user ? { nome: (user as any).nome } : null
+        } : null
+      };
+    });
+
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao listar avaliações públicas' });
+  }
+});
+
 // Listar avaliações (admin pode ver todas)
 router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {

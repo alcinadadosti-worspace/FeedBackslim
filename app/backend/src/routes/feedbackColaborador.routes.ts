@@ -181,6 +181,24 @@ router.get('/ranking', async (req: Request, res: Response) => {
   }
 });
 
+// Listar todos os feedbacks públicos (todos os colaboradores)
+router.get('/publicos', async (req: Request, res: Response) => {
+  try {
+    const snap = await col('feedbacksColaborador')
+      .where('publica', '==', true)
+      .get();
+
+    const feedbacks = snap.docs
+      .map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }))
+      .sort((a: any, b: any) => (b.createdAt as Date).getTime() - (a.createdAt as Date).getTime())
+      .slice(0, 60);
+
+    res.json(feedbacks);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao listar feedbacks públicos' });
+  }
+});
+
 // Listar feedbacks públicos de um colaborador
 router.get('/publicos/:slackId', async (req: Request, res: Response) => {
   try {

@@ -1,0 +1,216 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { MessageSquare, ThumbsUp, Lightbulb, AlertCircle, UserCheck, Users, Star } from 'lucide-react';
+import { SmartLayout } from '@/components/layout/SmartLayout';
+import { Card, CardTitle, CardContent } from '@/components/ui/Card';
+import { Avatar } from '@/components/ui/Avatar';
+import { SimpleRating } from '@/components/ui/Rating';
+import { Loading } from '@/components/ui/Loading';
+import { avaliacoesAPI, feedbacksColaboradorAPI } from '@/lib/api';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
+type Tab = 'gestores' | 'colaboradores';
+
+export default function FeedbacksPage() {
+  const [tab, setTab] = useState<Tab>('gestores');
+  const [avaliacoes, setAvaliacoes] = useState<any[]>([]);
+  const [feedbacksCol, setFeedbacksCol] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const [avRes, colRes] = await Promise.allSettled([
+        avaliacoesAPI.listPublicas(),
+        feedbacksColaboradorAPI.listTodosPublicos(),
+      ]);
+      if (avRes.status === 'fulfilled') setAvaliacoes(avRes.value.data);
+      if (colRes.status === 'fulfilled') setFeedbacksCol(colRes.value.data);
+    } catch (error) {
+      console.error('Erro ao carregar feedbacks:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDate = (date: any) => {
+    try {
+      return format(new Date(date), "dd/MM/yyyy", { locale: ptBR });
+    } catch {
+      return '';
+    }
+  };
+
+  return (
+    <SmartLayout>
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-display font-bold text-neutral-900">Feedbacks Públicos</h1>
+          <p className="text-neutral-600 mt-1">Feedbacks que foram compartilhados publicamente</p>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6 p-1 bg-neutral-100 border-2 border-neutral-200">
+          <button
+            onClick={() => setTab('gestores')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 font-semibold text-sm transition-colors ${
+              tab === 'gestores'
+                ? 'bg-white border-2 border-neutral-900 text-neutral-900'
+                : 'text-neutral-500 hover:text-neutral-700'
+            }`}
+          >
+            <UserCheck className="w-4 h-4" />
+            Gestores
+            {avaliacoes.length > 0 && (
+              <span className="bg-neutral-900 text-white text-xs px-1.5 py-0.5 font-bold">{avaliacoes.length}</span>
+            )}
+          </button>
+          <button
+            onClick={() => setTab('colaboradores')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 font-semibold text-sm transition-colors ${
+              tab === 'colaboradores'
+                ? 'bg-white border-2 border-neutral-900 text-neutral-900'
+                : 'text-neutral-500 hover:text-neutral-700'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            Colaboradores
+            {feedbacksCol.length > 0 && (
+              <span className="bg-neutral-900 text-white text-xs px-1.5 py-0.5 font-bold">{feedbacksCol.length}</span>
+            )}
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <Loading size="lg" />
+          </div>
+        ) : tab === 'gestores' ? (
+          /* ---- FEEDBACKS DE GESTORES ---- */
+          avaliacoes.length === 0 ? (
+            <Card className="text-center py-12">
+              <MessageSquare className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
+              <p className="text-neutral-500">Nenhum feedback público de gestores ainda</p>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {avaliacoes.map((av: any) => (
+                <Card key={av.id}>
+                  <div className="flex items-start gap-4">
+                    <Link href={`/gestores/${av.gestor?.id}`} className="shrink-0">
+                      <Avatar src={av.gestor?.foto} alt={av.gestor?.user?.nome} size="md" />
+                    </Link>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <Link href={`/gestores/${av.gestor?.id}`} className="hover:underline">
+                          <span className="font-bold text-neutral-900">{av.gestor?.user?.nome || 'Gestor'}</span>
+                          {av.gestor?.cargo && (
+                            <span className="text-sm text-neutral-500 ml-2">{av.gestor.cargo}</span>
+                          )}
+                        </Link>
+                        <div className="flex items-center gap-3">
+                          <SimpleRating value={av.nota} />
+                          <span className="text-xs text-neutral-400">{formatDate(av.createdAt)}</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 space-y-2">
+                        {av.elogio && (
+                          <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200">
+                            <ThumbsUp className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                            <p className="text-sm text-neutral-700">
+                              <span className="font-semibold text-green-700">Elogio: </span>{av.elogio}
+                            </p>
+                          </div>
+                        )}
+                        {av.sugestao && (
+                          <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200">
+                            <Lightbulb className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                            <p className="text-sm text-neutral-700">
+                              <span className="font-semibold text-blue-700">Sugestão: </span>{av.sugestao}
+                            </p>
+                          </div>
+                        )}
+                        {av.critica && (
+                          <div className="flex items-start gap-2 p-3 bg-orange-50 border border-orange-200">
+                            <AlertCircle className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
+                            <p className="text-sm text-neutral-700">
+                              <span className="font-semibold text-orange-700">Crítica: </span>{av.critica}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )
+        ) : (
+          /* ---- FEEDBACKS DE COLABORADORES ---- */
+          feedbacksCol.length === 0 ? (
+            <Card className="text-center py-12">
+              <MessageSquare className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
+              <p className="text-neutral-500">Nenhum feedback público de colaboradores ainda</p>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {feedbacksCol.map((fb: any) => (
+                <Card key={fb.id}>
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 bg-neutral-200 border-2 border-neutral-300 flex items-center justify-center font-bold text-neutral-600 shrink-0">
+                      {fb.colaboradorNome?.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <span className="font-bold text-neutral-900">{fb.colaboradorNome}</span>
+                        <div className="flex items-center gap-3">
+                          <SimpleRating value={fb.nota} />
+                          <span className="text-xs text-neutral-400">{formatDate(fb.createdAt)}</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 space-y-2">
+                        {fb.elogio && (
+                          <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200">
+                            <ThumbsUp className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                            <p className="text-sm text-neutral-700">
+                              <span className="font-semibold text-green-700">Elogio: </span>{fb.elogio}
+                            </p>
+                          </div>
+                        )}
+                        {fb.sugestao && (
+                          <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200">
+                            <Lightbulb className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                            <p className="text-sm text-neutral-700">
+                              <span className="font-semibold text-blue-700">Sugestão: </span>{fb.sugestao}
+                            </p>
+                          </div>
+                        )}
+                        {fb.critica && (
+                          <div className="flex items-start gap-2 p-3 bg-orange-50 border border-orange-200">
+                            <AlertCircle className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
+                            <p className="text-sm text-neutral-700">
+                              <span className="font-semibold text-orange-700">Crítica: </span>{fb.critica}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )
+        )}
+      </div>
+    </SmartLayout>
+  );
+}

@@ -14,6 +14,7 @@ import {
   LogOut,
   BarChart3,
   Trophy,
+  MessageSquare,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { Avatar } from '@/components/ui/Avatar';
@@ -49,6 +50,12 @@ export function Sidebar() {
       name: 'Ranking',
       href: '/ranking',
       icon: Trophy,
+      show: true,
+    },
+    {
+      name: 'Feedbacks',
+      href: '/feedbacks',
+      icon: MessageSquare,
       show: true,
     },
     {
