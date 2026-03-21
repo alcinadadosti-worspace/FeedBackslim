@@ -70,12 +70,12 @@ export default function AvaliarPage() {
 
   const loadData = async () => {
     try {
-      const [gestoresRes, colaboradoresRes] = await Promise.all([
+      const [gestoresRes, colaboradoresRes] = await Promise.allSettled([
         gestoresAPI.list(),
         colaboradoresAPI.list(),
       ]);
-      setGestores(gestoresRes.data);
-      setColaboradores(colaboradoresRes.data);
+      if (gestoresRes.status === 'fulfilled') setGestores(gestoresRes.value.data);
+      if (colaboradoresRes.status === 'fulfilled') setColaboradores(colaboradoresRes.value.data);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
