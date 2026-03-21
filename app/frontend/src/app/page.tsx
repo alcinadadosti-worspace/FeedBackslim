@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Star, AlertTriangle, Users, Shield } from 'lucide-react';
+import { Star, AlertTriangle, Users, Shield, MessageSquare } from 'lucide-react';
 
 export default function HomePage() {
   return (
@@ -93,6 +93,13 @@ export default function HomePage() {
             >
               <Star className="w-4 h-4" />
               <span>Ranking</span>
+            </Link>
+            <Link
+              href="/feedbacks"
+              className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 transition-colors"
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span>Feedbacks públicos</span>
             </Link>
           </div>
 

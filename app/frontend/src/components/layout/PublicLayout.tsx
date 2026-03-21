@@ -4,7 +4,7 @@ import { ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, MessageSquare } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 
 interface PublicLayoutProps {
@@ -40,6 +40,15 @@ export function PublicLayout({ children, showBackButton = true }: PublicLayoutPr
             </div>
           </Link>
 
+          <div className="flex items-center gap-4">
+            <Link
+              href="/feedbacks"
+              className="flex items-center gap-1.5 text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span>Feedbacks</span>
+            </Link>
+
           {isAuthenticated && user?.role === 'RH_ADMIN' ? (
             <Link href="/admin" className="text-sm text-neutral-500 hover:text-neutral-700 transition-colors">
               Painel RH/Admin
@@ -53,6 +62,7 @@ export function PublicLayout({ children, showBackButton = true }: PublicLayoutPr
               Acesso RH/Admin
             </button>
           )}
+          </div>
         </div>
       </header>
 
