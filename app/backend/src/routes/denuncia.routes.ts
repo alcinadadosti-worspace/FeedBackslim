@@ -21,7 +21,9 @@ const createDenunciaSchema = z.object({
   comunicada: z.enum(['LIDERANCA', 'RH', 'OUTRO_CANAL', 'NAO']),
   desejaRetorno: z.enum(['SIM', 'NAO']),
   declaracao: z.boolean().refine((v) => v === true, 'Declaração final é obrigatória'),
-  anonima: z.boolean().default(true)
+  anonima: z.boolean().default(true),
+  nomeIdentificado: z.string().optional(),
+  setorIdentificado: z.string().optional()
 });
 
 const updateStatusSchema = z.object({
@@ -162,7 +164,9 @@ router.post('/', denunciaLimiter, async (req: AuthRequest, res: Response) => {
       comunicada: data.comunicada,
       desejaRetorno: data.desejaRetorno,
       declaracao: data.declaracao,
-      anonima: true,
+      anonima: data.anonima,
+      nomeIdentificado: !data.anonima ? (data.nomeIdentificado || null) : null,
+      setorIdentificado: !data.anonima ? (data.setorIdentificado || null) : null,
       status: StatusDenuncia.PENDENTE,
       createdAt: now,
       updatedAt: now

@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { AlertTriangle, Shield, Eye, EyeOff, Send } from 'lucide-react';
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { Card, CardTitle, CardContent } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { Button } from '@/components/ui/Button';
@@ -96,6 +97,8 @@ export default function OuvidoriaPage() {
   const [desejaRetorno, setDesejaRetorno] = useState('');
   const [declaracao, setDeclaracao] = useState(false);
   const [anonima, setAnonima] = useState(true);
+  const [nomeIdentificado, setNomeIdentificado] = useState('');
+  const [setorIdentificado, setSetorIdentificado] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -197,6 +200,7 @@ export default function OuvidoriaPage() {
         desejaRetorno,
         declaracao,
         anonima,
+        ...(!anonima && { nomeIdentificado, setorIdentificado }),
       });
 
       toast.success('Denuncia registrada com sucesso. O RH sera notificado.');
@@ -412,6 +416,25 @@ export default function OuvidoriaPage() {
                     </button>
                   </div>
                 </div>
+
+                {/* Identificação (quando não anônima) */}
+                {!anonima && (
+                  <div className="p-4 bg-blue-50 border-2 border-blue-200 space-y-4">
+                    <p className="font-bold text-blue-900">Sua identificação</p>
+                    <Input
+                      label="Seu nome"
+                      placeholder="Digite seu nome completo"
+                      value={nomeIdentificado}
+                      onChange={(e) => setNomeIdentificado(e.target.value)}
+                    />
+                    <Input
+                      label="Seu setor"
+                      placeholder="Digite o setor em que você trabalha"
+                      value={setorIdentificado}
+                      onChange={(e) => setSetorIdentificado(e.target.value)}
+                    />
+                  </div>
+                )}
 
                 {/* Aviso de Confidencialidade */}
                 <div className="p-4 bg-yellow-50 border-2 border-yellow-300">
