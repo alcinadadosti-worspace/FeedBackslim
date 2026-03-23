@@ -196,6 +196,7 @@ router.post('/', denunciaLimiter, async (req: AuthRequest, res: Response) => {
       const gestorUser = snapData<any>(gestorUserSnap as any);
       await sendComplaintNotification({
         gestorNome: gestorUser?.nome || 'Gestor',
+        gestorSlackId: gestor.slackUserId ?? null,
         tipo,
         tipoManifestacao: data.tipoManifestacao,
         temas: data.temas,

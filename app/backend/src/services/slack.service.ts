@@ -29,6 +29,7 @@ interface EvaluationNotificationParams {
 
 interface ComplaintNotificationParams {
   gestorNome: string;
+  gestorSlackId?: string | null; // nunca deve receber a própria denúncia
   tipo: string;
   tipoManifestacao?: string;
   temas?: string[];
@@ -209,7 +210,11 @@ export async function sendComplaintNotification(params: ComplaintNotificationPar
       OUTRO: 'Outro'
     };
 
-    const recipients = await getHighLeadershipSlackUserIds();
+    const allRecipients = await getHighLeadershipSlackUserIds();
+    // Garantia de segurança: o gestor denunciado nunca recebe a própria denúncia
+    const recipients = params.gestorSlackId
+      ? allRecipients.filter((id) => id !== params.gestorSlackId)
+      : allRecipients;
     if (!recipients.length) {
       console.log('Slack não configurado - nenhum destinatário de alta liderança encontrado para denúncia');
       return;
