@@ -166,10 +166,8 @@ router.get('/admin', authenticateToken, requireAdmin, async (req: AuthRequest, r
     }
 
     // Estatísticas gerais — count() não lê documentos, apenas o índice
+    // denunciasPendentes usa apenas filtro de status (sem data) para evitar índice composto
     const denunciasBase: any = fromDate ? col('denuncias').where('createdAt', '>=', fromDate) : col('denuncias');
-    const denunciasPendentesBase: any = fromDate
-      ? col('denuncias').where('createdAt', '>=', fromDate).where('status', '==', StatusDenuncia.PENDENTE)
-      : col('denuncias').where('status', '==', StatusDenuncia.PENDENTE);
 
     const [
       totalUsers,
@@ -183,7 +181,7 @@ router.get('/admin', authenticateToken, requireAdmin, async (req: AuthRequest, r
       col('gestores').count().get().then((s: any) => s.data().count),
       (fromDate ? col('avaliacoes').where('createdAt', '>=', fromDate).get() : col('avaliacoes').get()),
       denunciasBase.count().get().then((s: any) => s.data().count),
-      denunciasPendentesBase.count().get().then((s: any) => s.data().count),
+      col('denuncias').where('status', '==', StatusDenuncia.PENDENTE).count().get().then((s: any) => s.data().count),
       col('feedbacksColaborador').count().get().then((s: any) => s.data().count)
     ]);
 
