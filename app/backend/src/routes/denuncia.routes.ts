@@ -31,11 +31,19 @@ const updateStatusSchema = z.object({
   comentarioRH: z.string().optional()
 });
 
-function gerarCodigoProtocolo(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+async function gerarCodigoProtocolo(): Promise<string> {
+  for (let i = 0; i < 5; i++) {
+    const codigo = Math.floor(100000 + Math.random() * 900000).toString();
+    const snap = await col('denuncias').where('codigoProtocolo', '==', codigo).limit(1).get();
+    if (snap.empty) return codigo;
+  }
+  // Fallback com timestamp se todas as tentativas colidirem (praticamente impossível)
+  return `${Math.floor(100000 + Math.random() * 900000)}${Date.now().toString(36)}`;
 }
 
 // Listar denúncias (apenas admin)
+// Nota: combinações de filtros múltiplos exigem índices compostos no Firestore
+// (gestorId+createdAt, status+createdAt, tipo+createdAt) — criar em firestore.indexes.json
 router.get('/', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { gestorId, status, tipo, page = '1', limit = '20' } = req.query;
@@ -43,17 +51,19 @@ router.get('/', authenticateToken, requireAdmin, async (req: AuthRequest, res: R
     const take = Number(limit);
     const skip = (Number(page) - 1) * take;
 
-    const snap = await col('denuncias').get();
-    const all = snap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
+    // Construir query dinamicamente com filtros nativos do Firestore
+    let query: any = col('denuncias');
+    if (gestorId) query = query.where('gestorId', '==', gestorId);
+    if (status) query = query.where('status', '==', status);
+    if (tipo) query = query.where('tipo', '==', tipo);
 
-    const filtered = all
-      .filter((d: any) => (gestorId ? d.gestorId === gestorId : true))
-      .filter((d: any) => (status ? d.status === status : true))
-      .filter((d: any) => (tipo ? d.tipo === tipo : true))
-      .sort((a: any, b: any) => (b.createdAt as Date).getTime() - (a.createdAt as Date).getTime());
+    const [countSnap, dataSnap] = await Promise.all([
+      query.count().get(),
+      query.orderBy('createdAt', 'desc').offset(skip).limit(take).get()
+    ]);
 
-    const total = filtered.length;
-    const denuncias = filtered.slice(skip, skip + take);
+    const total = countSnap.data().count;
+    const denuncias = dataSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
 
     const gestorIds = denuncias.map((d: any) => d.gestorId).filter(Boolean);
     const autorIds = denuncias.map((d: any) => d.autorId).filter(Boolean);
@@ -140,7 +150,7 @@ router.post('/', denunciaLimiter, async (req: AuthRequest, res: Response) => {
     // Criar denúncia anônima (sem autorId)
     const now = new Date();
     const denunciaId = uuidv4();
-    const codigoProtocolo = gerarCodigoProtocolo();
+    const codigoProtocolo = await gerarCodigoProtocolo();
 
     const tipo = (() => {
       const temas = data.temas || [];

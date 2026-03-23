@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
-import { authenticateToken, AuthRequest } from '../middleware/auth.middleware';
+import { authenticateToken, optionalAuthenticateToken, AuthRequest } from '../middleware/auth.middleware';
 import { avaliacaoLimiter } from '../middleware/rateLimit.middleware';
 import { sendEvaluationNotification } from '../services/slack.service';
 import { col, docRef, getManyByIds, normalizeFirestoreData, snapData } from '../firestoreRepo';
@@ -129,8 +129,8 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
   }
 });
 
-// Criar avaliação (anônima - não requer autenticação)
-router.post('/', avaliacaoLimiter, async (req: AuthRequest, res: Response) => {
+// Criar avaliação (auth opcional — salva autorId se logado, anônima caso contrário)
+router.post('/', avaliacaoLimiter, optionalAuthenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const data = createAvaliacaoSchema.parse(req.body);
 
@@ -165,7 +165,7 @@ router.post('/', avaliacaoLimiter, async (req: AuthRequest, res: Response) => {
       tx.set(docRef('avaliacoes', avaliacaoId), {
         id: avaliacaoId,
         gestorId: data.gestorId,
-        autorId: null,
+        autorId: req.user?.id ?? null,
         nota: data.nota,
         elogio: data.elogio ?? null,
         sugestao: data.sugestao ?? null,

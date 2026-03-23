@@ -91,12 +91,12 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 flex items-center justify-center p-4 transition-colors">
       <div className="w-full max-w-md">
         {/* Back to Home */}
         <Link
           href="/"
-          className="inline-flex items-center gap-2 text-neutral-600 hover:text-neutral-900 mb-6 font-medium"
+          className="inline-flex items-center gap-2 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-neutral-100 mb-6 font-medium"
         >
           <ArrowLeft className="w-4 h-4" />
           Voltar para inicio
@@ -108,7 +108,7 @@ export default function LoginPage() {
             <Image src="/logo.png" alt="Ouvidoria" width={80} height={80} className="object-contain" />
             <span className="font-display font-bold text-3xl">Ouvidoria</span>
           </div>
-          <p className="text-neutral-600 font-medium">
+          <p className="text-neutral-600 dark:text-neutral-300 font-medium">
             Plataforma de Feedback para Gestores
           </p>
         </div>

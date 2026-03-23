@@ -53,10 +53,10 @@ router.get('/colaborador', authenticateToken, async (req: AuthRequest, res: Resp
       badges: badgesByGestorId[g.id] || []
     }));
 
-    // Estatísticas gerais
+    // Estatísticas gerais — count() não lê documentos, apenas o índice
     const [totalGestores, totalAvaliacoes] = await Promise.all([
-      col('gestores').get().then((s: any) => s.size),
-      col('avaliacoes').get().then((s: any) => s.size)
+      col('gestores').count().get().then((s: any) => s.data().count),
+      col('avaliacoes').count().get().then((s: any) => s.data().count)
     ]);
 
     res.json({
@@ -165,7 +165,12 @@ router.get('/admin', authenticateToken, requireAdmin, async (req: AuthRequest, r
       fromDate = new Date(Date.now() - dias * 24 * 60 * 60 * 1000);
     }
 
-    // Estatísticas gerais
+    // Estatísticas gerais — count() não lê documentos, apenas o índice
+    const denunciasBase: any = fromDate ? col('denuncias').where('createdAt', '>=', fromDate) : col('denuncias');
+    const denunciasPendentesBase: any = fromDate
+      ? col('denuncias').where('createdAt', '>=', fromDate).where('status', '==', StatusDenuncia.PENDENTE)
+      : col('denuncias').where('status', '==', StatusDenuncia.PENDENTE);
+
     const [
       totalUsers,
       totalGestores,
@@ -174,26 +179,12 @@ router.get('/admin', authenticateToken, requireAdmin, async (req: AuthRequest, r
       denunciasPendentes,
       totalFeedbacksColaboradores
     ] = await Promise.all([
-      col('users').get().then((s: any) => s.size),
-      col('gestores').get().then((s: any) => s.size),
-      (fromDate
-        ? col('avaliacoes').where('createdAt', '>=', fromDate).get()
-        : col('avaliacoes').get()),
-      (fromDate
-        ? col('denuncias').where('createdAt', '>=', fromDate).get().then((s: any) => s.size)
-        : col('denuncias').get().then((s: any) => s.size)),
-      (fromDate
-        ? col('denuncias')
-            .where('createdAt', '>=', fromDate)
-            .get()
-            .then((s: any) =>
-              s.docs.map((d: any) => normalizeFirestoreData(d.data()) as any).filter((d: any) => d.status === StatusDenuncia.PENDENTE).length
-            )
-        : col('denuncias')
-            .where('status', '==', StatusDenuncia.PENDENTE)
-            .get()
-            .then((s: any) => s.size)),
-      col('feedbacksColaborador').get().then((s: any) => s.size)
+      col('users').count().get().then((s: any) => s.data().count),
+      col('gestores').count().get().then((s: any) => s.data().count),
+      (fromDate ? col('avaliacoes').where('createdAt', '>=', fromDate).get() : col('avaliacoes').get()),
+      denunciasBase.count().get().then((s: any) => s.data().count),
+      denunciasPendentesBase.count().get().then((s: any) => s.data().count),
+      col('feedbacksColaborador').count().get().then((s: any) => s.data().count)
     ]);
 
     const totalAvaliacoes = avaliacoesSnap.size;
