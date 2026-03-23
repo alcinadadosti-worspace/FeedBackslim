@@ -268,25 +268,39 @@ router.patch('/:id/publica', authenticateToken, async (req: AuthRequest, res: Re
   }
 });
 
-// Função para verificar e atribuir badges
+// Função para verificar, atribuir e revogar badges com base nos critérios atuais
 async function checkAndAssignBadges(gestorId: string) {
   const gestorSnap = await docRef('gestores', gestorId).get();
   const gestor = snapData<any>(gestorSnap as any);
   if (!gestor) return;
 
   const badgesSnap = await col('badges').where('gestorId', '==', gestorId).get();
-  const badges = badgesSnap.docs.map((d: any) => (normalizeFirestoreData(d.data()) as any).tipo);
+  // Mapear tipo → docId para poder deletar badges revogados
+  const badgeDocByTipo: Record<string, string> = {};
+  for (const d of badgesSnap.docs) {
+    const data = normalizeFirestoreData(d.data()) as any;
+    badgeDocByTipo[data.tipo] = d.id;
+  }
+
+  const hasBadge = (tipo: BadgeType) => tipo in badgeDocByTipo;
+
+  async function grant(tipo: BadgeType, descricao: string) {
+    if (hasBadge(tipo)) return;
+    const id = uuidv4();
+    await docRef('badges', id).set({ id, gestorId, tipo, descricao, dataConquista: new Date() });
+  }
+
+  async function revoke(tipo: BadgeType) {
+    if (!hasBadge(tipo)) return;
+    await docRef('badges', badgeDocByTipo[tipo]).delete();
+  }
 
   // Badge "Líder Inspirador" - média >= 9 com pelo menos 10 avaliações
-  if (Number(gestor.mediaAvaliacao || 0) >= 9 && Number(gestor.totalAvaliacoes || 0) >= 10 && !badges.includes(BadgeType.LIDER_INSPIRADOR)) {
-    const id = uuidv4();
-    await docRef('badges', id).set({
-      id,
-      gestorId,
-      tipo: BadgeType.LIDER_INSPIRADOR,
-      descricao: 'Média de avaliação acima de 9 com 10+ avaliações',
-      dataConquista: new Date()
-    });
+  const mediaOk = Number(gestor.mediaAvaliacao || 0) >= 9 && Number(gestor.totalAvaliacoes || 0) >= 10;
+  if (mediaOk) {
+    await grant(BadgeType.LIDER_INSPIRADOR, 'Média de avaliação acima de 9 com 10+ avaliações');
+  } else {
+    await revoke(BadgeType.LIDER_INSPIRADOR);
   }
 
   // Badge "Comunicador" - 20+ avaliações com elogios
@@ -295,27 +309,17 @@ async function checkAndAssignBadges(gestorId: string) {
     const avaliacoesSnap = await col('avaliacoes').where('gestorId', '==', gestorId).get();
     elogios = avaliacoesSnap.docs.map((d: any) => normalizeFirestoreData(d.data()) as any).filter((a: any) => a.elogio).length;
   }
-  if (elogios >= 20 && !badges.includes(BadgeType.COMUNICADOR)) {
-    const id = uuidv4();
-    await docRef('badges', id).set({
-      id,
-      gestorId,
-      tipo: BadgeType.COMUNICADOR,
-      descricao: 'Recebeu 20+ elogios de comunicação',
-      dataConquista: new Date()
-    });
+  if (elogios >= 20) {
+    await grant(BadgeType.COMUNICADOR, 'Recebeu 20+ elogios de comunicação');
+  } else {
+    await revoke(BadgeType.COMUNICADOR);
   }
 
   // Badge "Colaborativo" - 50+ avaliações totais
-  if (Number(gestor.totalAvaliacoes || 0) >= 50 && !badges.includes(BadgeType.COLABORATIVO)) {
-    const id = uuidv4();
-    await docRef('badges', id).set({
-      id,
-      gestorId,
-      tipo: BadgeType.COLABORATIVO,
-      descricao: 'Recebeu 50+ avaliações da equipe',
-      dataConquista: new Date()
-    });
+  if (Number(gestor.totalAvaliacoes || 0) >= 50) {
+    await grant(BadgeType.COLABORATIVO, 'Recebeu 50+ avaliações da equipe');
+  } else {
+    await revoke(BadgeType.COLABORATIVO);
   }
 }
 
