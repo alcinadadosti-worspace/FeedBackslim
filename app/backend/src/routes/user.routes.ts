@@ -156,6 +156,27 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
   }
 });
 
+// Promover/alterar role de usuário (apenas admin)
+router.patch('/:id/role', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { role } = z.object({ role: z.nativeEnum(Role) }).parse(req.body);
+    const { id } = req.params;
+
+    const userSnap = await docRef('users', id).get();
+    if (!userSnap.exists) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    await docRef('users', id).set({ role, updatedAt: new Date() }, { merge: true });
+    res.json({ id, role });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: error.errors[0].message });
+    }
+    res.status(500).json({ error: 'Erro ao atualizar role' });
+  }
+});
+
 // Atualizar usuário
 router.put('/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
