@@ -543,8 +543,8 @@ export default function OuvidoriaPage() {
                       <p className="font-bold text-yellow-800 dark:text-yellow-300">Confidencialidade Garantida</p>
                       <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">
                         Esta denúncia será tratada com total sigilo pelo departamento de RH.
-                        O gestor será notificado de forma genérica, sem acesso aos detalhes ou
-                        identificação do denunciante (se anônima).
+                        O gestor denunciado não será notificado. Apenas a equipe de RH terá
+                        acesso aos detalhes da manifestação.
                       </p>
                     </div>
                   </div>
