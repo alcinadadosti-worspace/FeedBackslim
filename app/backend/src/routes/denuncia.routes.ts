@@ -6,11 +6,13 @@ import { denunciaLimiter } from '../middleware/rateLimit.middleware';
 import { sendComplaintNotification } from '../services/slack.service';
 import { StatusDenuncia, TipoDenuncia } from '../models';
 import { col, docRef, getManyByIds, normalizeFirestoreData, snapData } from '../firestoreRepo';
+import { COLABORADORES } from '../data/colaboradores';
 
 const router = Router();
 
 const createDenunciaSchema = z.object({
-  gestorId: z.string().uuid('ID do gestor inválido'),
+  gestorId: z.string().uuid('ID do gestor inválido').optional(),
+  colaboradorSlackId: z.string().optional(),
   tipoManifestacao: z.enum(['DENUNCIA', 'RECLAMACAO', 'SUGESTAO_MELHORIA', 'ELOGIO', 'DUVIDA', 'OUTRO']),
   temas: z.array(z.string().min(1)).min(1, 'Selecione ao menos um tema'),
   descricao: z.string().min(10, 'Descrição deve ter no mínimo 10 caracteres'),
@@ -24,6 +26,14 @@ const createDenunciaSchema = z.object({
   anonima: z.boolean().default(true),
   nomeIdentificado: z.string().optional(),
   setorIdentificado: z.string().optional()
+}).superRefine((data, ctx) => {
+  if (!data.gestorId && !data.colaboradorSlackId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Selecione um gestor ou colaborador',
+      path: ['gestorId']
+    });
+  }
 });
 
 const updateStatusSchema = z.object({
@@ -139,12 +149,26 @@ router.post('/', denunciaLimiter, async (req: AuthRequest, res: Response) => {
   try {
     const data = createDenunciaSchema.parse(req.body);
 
-    // Verificar se o gestor existe
-    const gestorSnap = await docRef('gestores', data.gestorId).get();
-    const gestor = snapData<any>(gestorSnap as any);
+    let denunciadoNome = '';
+    let denunciadoSlackId: string | null = null;
 
-    if (!gestor) {
-      return res.status(404).json({ error: 'Gestor não encontrado' });
+    if (data.gestorId) {
+      const gestorSnap = await docRef('gestores', data.gestorId).get();
+      const gestor = snapData<any>(gestorSnap as any);
+      if (!gestor) {
+        return res.status(404).json({ error: 'Gestor não encontrado' });
+      }
+      const gestorUserSnap = await docRef('users', gestor.userId).get();
+      const gestorUser = snapData<any>(gestorUserSnap as any);
+      denunciadoNome = gestorUser?.nome || 'Gestor';
+      denunciadoSlackId = gestor.slackUserId ?? null;
+    } else if (data.colaboradorSlackId) {
+      const colaborador = COLABORADORES.find((c) => c.slackId === data.colaboradorSlackId);
+      if (!colaborador) {
+        return res.status(404).json({ error: 'Colaborador não encontrado' });
+      }
+      denunciadoNome = colaborador.nome;
+      denunciadoSlackId = colaborador.slackId;
     }
 
     // Criar denúncia anônima (sem autorId)
@@ -167,7 +191,9 @@ router.post('/', denunciaLimiter, async (req: AuthRequest, res: Response) => {
 
     await docRef('denuncias', denunciaId).set({
       id: denunciaId,
-      gestorId: data.gestorId,
+      gestorId: data.gestorId || null,
+      colaboradorSlackId: data.colaboradorSlackId || null,
+      colaboradorNome: data.colaboradorSlackId ? denunciadoNome : null,
       autorId: null,
       tipo,
       tipoManifestacao: data.tipoManifestacao,
@@ -192,11 +218,9 @@ router.post('/', denunciaLimiter, async (req: AuthRequest, res: Response) => {
 
     // Enviar notificações Slack
     try {
-      const gestorUserSnap = await docRef('users', gestor.userId).get();
-      const gestorUser = snapData<any>(gestorUserSnap as any);
       await sendComplaintNotification({
-        gestorNome: gestorUser?.nome || 'Gestor',
-        gestorSlackId: gestor.slackUserId ?? null,
+        denunciadoNome,
+        denunciadoSlackId,
         tipo,
         tipoManifestacao: data.tipoManifestacao,
         temas: data.temas,

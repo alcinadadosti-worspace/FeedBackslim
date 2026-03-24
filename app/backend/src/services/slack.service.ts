@@ -28,8 +28,8 @@ interface EvaluationNotificationParams {
 }
 
 interface ComplaintNotificationParams {
-  gestorNome: string;
-  gestorSlackId?: string | null; // nunca deve receber a própria denúncia
+  denunciadoNome: string;
+  denunciadoSlackId?: string | null; // nunca deve receber a própria denúncia
   tipo: string;
   tipoManifestacao?: string;
   temas?: string[];
@@ -192,7 +192,7 @@ export async function sendComplaintNotification(params: ComplaintNotificationPar
   }
 
   try {
-    const { gestorNome, tipo, tipoManifestacao, temas, descricao, denunciaId, anonima, nomeIdentificado, setorIdentificado } = params;
+    const { denunciadoNome, tipo, tipoManifestacao, temas, descricao, denunciaId, anonima, nomeIdentificado, setorIdentificado } = params;
 
     const tipoLabels: Record<string, string> = {
       ASSEDIO_MORAL: 'Assédio Moral',
@@ -211,9 +211,9 @@ export async function sendComplaintNotification(params: ComplaintNotificationPar
     };
 
     const allRecipients = await getHighLeadershipSlackUserIds();
-    // Garantia de segurança: o gestor denunciado nunca recebe a própria denúncia
-    const recipients = params.gestorSlackId
-      ? allRecipients.filter((id) => id !== params.gestorSlackId)
+    // Garantia de segurança: a pessoa denunciada nunca recebe a própria denúncia
+    const recipients = params.denunciadoSlackId
+      ? allRecipients.filter((id) => id !== params.denunciadoSlackId)
       : allRecipients;
     if (!recipients.length) {
       console.log('Slack não configurado - nenhum destinatário de alta liderança encontrado para denúncia');
@@ -234,7 +234,7 @@ export async function sendComplaintNotification(params: ComplaintNotificationPar
         fields: [
           {
             type: 'mrkdwn',
-            text: `*Gestor envolvido:*\n${gestorNome}`
+            text: `*Pessoa envolvida:*\n${denunciadoNome}`
           },
           {
             type: 'mrkdwn',

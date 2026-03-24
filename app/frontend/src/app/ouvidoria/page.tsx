@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { AlertTriangle, Shield, Eye, EyeOff, Send, Copy, CheckCheck, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, Shield, Eye, EyeOff, Send, Copy, CheckCheck, CheckCircle2, UserCheck, Users } from 'lucide-react';
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { Card, CardTitle, CardContent } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { Loading } from '@/components/ui/Loading';
-import { gestoresAPI, denunciasAPI } from '@/lib/api';
+import { gestoresAPI, denunciasAPI, colaboradoresAPI } from '@/lib/api';
 
 const tiposManifestacao = [
   { value: '', label: 'Selecione o tipo' },
@@ -82,11 +82,17 @@ const retornoOptions = [
   { value: 'NAO', label: 'Não' },
 ];
 
+type TipoDenunciado = 'gestor' | 'colaborador';
+
 export default function OuvidoriaPage() {
   const router = useRouter();
+  const [tipoDenunciado, setTipoDenunciado] = useState<TipoDenunciado>('gestor');
   const [gestores, setGestores] = useState<any[]>([]);
+  const [colaboradores, setColaboradores] = useState<any[]>([]);
   const [selectedGestorId, setSelectedGestorId] = useState('');
   const [selectedGestor, setSelectedGestor] = useState<any>(null);
+  const [selectedColaboradorSlackId, setSelectedColaboradorSlackId] = useState('');
+  const [selectedColaborador, setSelectedColaborador] = useState<any>(null);
   const [tipoManifestacao, setTipoManifestacao] = useState('');
   const [temas, setTemas] = useState<string[]>([]);
   const [descricao, setDescricao] = useState('');
@@ -113,28 +119,53 @@ export default function OuvidoriaPage() {
   useEffect(() => {
     if (selectedGestorId) {
       const gestor = gestores.find((g) => g.id === selectedGestorId);
-      setSelectedGestor(gestor);
+      setSelectedGestor(gestor ?? null);
     } else {
       setSelectedGestor(null);
     }
   }, [selectedGestorId, gestores]);
 
+  useEffect(() => {
+    if (selectedColaboradorSlackId) {
+      const col = colaboradores.find((c) => c.slackId === selectedColaboradorSlackId);
+      setSelectedColaborador(col ?? null);
+    } else {
+      setSelectedColaborador(null);
+    }
+  }, [selectedColaboradorSlackId, colaboradores]);
+
   const loadGestores = async () => {
     try {
-      const response = await gestoresAPI.list();
-      setGestores(response.data);
+      const [gestoresRes, colaboradoresRes] = await Promise.allSettled([
+        gestoresAPI.list(),
+        colaboradoresAPI.list(),
+      ]);
+      if (gestoresRes.status === 'fulfilled') setGestores(gestoresRes.value.data);
+      if (colaboradoresRes.status === 'fulfilled') setColaboradores(colaboradoresRes.value.data);
     } catch (error) {
-      console.error('Erro ao carregar gestores:', error);
+      console.error('Erro ao carregar dados:', error);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleTipoChange = (tipo: TipoDenunciado) => {
+    setTipoDenunciado(tipo);
+    setSelectedGestorId('');
+    setSelectedGestor(null);
+    setSelectedColaboradorSlackId('');
+    setSelectedColaborador(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!selectedGestorId) {
+    if (tipoDenunciado === 'gestor' && !selectedGestorId) {
       toast.error('Selecione o gestor');
+      return;
+    }
+    if (tipoDenunciado === 'colaborador' && !selectedColaboradorSlackId) {
+      toast.error('Selecione o colaborador');
       return;
     }
 
@@ -197,7 +228,7 @@ export default function OuvidoriaPage() {
 
     try {
       const response = await denunciasAPI.create({
-        gestorId: selectedGestorId,
+        ...(tipoDenunciado === 'gestor' ? { gestorId: selectedGestorId } : { colaboradorSlackId: selectedColaboradorSlackId }),
         tipoManifestacao,
         temas,
         descricao,
@@ -228,6 +259,18 @@ export default function OuvidoriaPage() {
       label: `${g.user?.nome} - ${g.cargo}`,
     })),
   ];
+
+  const colaboradorOptions = [
+    { value: '', label: 'Selecione o colaborador' },
+    ...colaboradores.map((c) => ({
+      value: c.slackId,
+      label: c.nome,
+    })),
+  ];
+
+  const denunciadoNome = tipoDenunciado === 'gestor'
+    ? selectedGestor?.user?.nome
+    : selectedColaborador?.nome;
 
   const handleCopiar = () => {
     if (!codigoProtocolo) return;
@@ -301,7 +344,7 @@ export default function OuvidoriaPage() {
             <p className="text-neutral-600 dark:text-neutral-300 mb-2">
               Você está registrando uma denúncia{' '}
               <strong className="text-neutral-900 dark:text-neutral-100">{anonima ? 'anônima' : 'identificada'}</strong>{' '}
-              contra <strong className="text-neutral-900 dark:text-neutral-100">{selectedGestor?.user?.nome}</strong>.
+              contra <strong className="text-neutral-900 dark:text-neutral-100">{denunciadoNome}</strong>.
             </p>
             <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">Esta ação não pode ser desfeita.</p>
             <div className="flex gap-3">
@@ -348,25 +391,74 @@ export default function OuvidoriaPage() {
           ) : (
             <form onSubmit={handleSubmit}>
               <CardContent className="space-y-6">
-                {/* Seleção do Gestor */}
-                <div>
-                  <Select
-                    label="Gestor Denunciado"
-                    options={gestorOptions}
-                    value={selectedGestorId}
-                    onChange={(e) => setSelectedGestorId(e.target.value)}
-                  />
-
-                  {selectedGestor && (
-                    <div className="mt-4 p-4 bg-neutral-50 dark:bg-neutral-700 border-2 border-neutral-200 dark:border-neutral-600 flex items-center gap-4">
-                      <Avatar src={selectedGestor.foto} alt={selectedGestor.user?.nome} size="md" />
-                      <div>
-                        <p className="font-bold text-neutral-900 dark:text-neutral-100">{selectedGestor.user?.nome}</p>
-                        <p className="text-sm text-neutral-600 dark:text-neutral-300">{selectedGestor.cargo}</p>
-                      </div>
-                    </div>
-                  )}
+                {/* Toggle Gestor / Colaborador */}
+                <div className="flex gap-2 p-1 bg-neutral-100 dark:bg-neutral-700 border-2 border-neutral-200 dark:border-neutral-600">
+                  <button
+                    type="button"
+                    onClick={() => handleTipoChange('gestor')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 font-semibold text-sm transition-colors ${
+                      tipoDenunciado === 'gestor'
+                        ? 'bg-white dark:bg-neutral-600 border-2 border-neutral-900 dark:border-neutral-100 text-neutral-900 dark:text-neutral-100'
+                        : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200'
+                    }`}
+                  >
+                    <UserCheck className="w-4 h-4" />
+                    Denunciar Gestor
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleTipoChange('colaborador')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 font-semibold text-sm transition-colors ${
+                      tipoDenunciado === 'colaborador'
+                        ? 'bg-white dark:bg-neutral-600 border-2 border-neutral-900 dark:border-neutral-100 text-neutral-900 dark:text-neutral-100'
+                        : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200'
+                    }`}
+                  >
+                    <Users className="w-4 h-4" />
+                    Denunciar Colaborador
+                  </button>
                 </div>
+
+                {/* Seleção do Denunciado */}
+                {tipoDenunciado === 'gestor' ? (
+                  <div>
+                    <Select
+                      label="Gestor Denunciado"
+                      options={gestorOptions}
+                      value={selectedGestorId}
+                      onChange={(e) => setSelectedGestorId(e.target.value)}
+                    />
+                    {selectedGestor && (
+                      <div className="mt-4 p-4 bg-neutral-50 dark:bg-neutral-700 border-2 border-neutral-200 dark:border-neutral-600 flex items-center gap-4">
+                        <Avatar src={selectedGestor.foto} alt={selectedGestor.user?.nome} size="md" />
+                        <div>
+                          <p className="font-bold text-neutral-900 dark:text-neutral-100">{selectedGestor.user?.nome}</p>
+                          <p className="text-sm text-neutral-600 dark:text-neutral-300">{selectedGestor.cargo}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <Select
+                      label="Colaborador Denunciado"
+                      options={colaboradorOptions}
+                      value={selectedColaboradorSlackId}
+                      onChange={(e) => setSelectedColaboradorSlackId(e.target.value)}
+                    />
+                    {selectedColaborador && (
+                      <div className="mt-4 p-4 bg-neutral-50 dark:bg-neutral-700 border-2 border-neutral-200 dark:border-neutral-600 flex items-center gap-4">
+                        <div className="w-10 h-10 bg-neutral-200 dark:bg-neutral-600 border-2 border-neutral-300 dark:border-neutral-500 flex items-center justify-center font-bold text-neutral-600 dark:text-neutral-100">
+                          {selectedColaborador.nome.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-bold text-neutral-900 dark:text-neutral-100">{selectedColaborador.nome}</p>
+                          <p className="text-sm text-neutral-500 dark:text-neutral-400">Colaborador</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <Select
                   label="Tipo de manifestação"
