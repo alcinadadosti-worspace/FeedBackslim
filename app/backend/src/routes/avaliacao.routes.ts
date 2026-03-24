@@ -27,18 +27,13 @@ router.get('/publicas', async (req: AuthRequest, res: Response) => {
     const limit = Math.min(30, Math.max(1, Number(req.query.limit) || 20));
     const offset = (page - 1) * limit;
 
-    const [snap, totalSnap] = await Promise.all([
-      col('avaliacoes')
-        .where('publica', '==', true)
-        .orderBy('createdAt', 'desc')
-        .offset(offset)
-        .limit(limit)
-        .get(),
-      col('avaliacoes').where('publica', '==', true).get()
-    ]);
+    const allPublicSnap = await col('avaliacoes').where('publica', '==', true).get();
+    const allPublic = allPublicSnap.docs
+      .map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }))
+      .sort((a: any, b: any) => (b.createdAt as Date).getTime() - (a.createdAt as Date).getTime());
 
-    const avaliacoes = snap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
-    const total = totalSnap.size;
+    const total = allPublic.length;
+    const avaliacoes = allPublic.slice(offset, offset + limit);
 
     const gestorIds = [...new Set(avaliacoes.map((a: any) => a.gestorId).filter(Boolean))];
     const gestoresById = await getManyByIds<any>('gestores', gestorIds);
