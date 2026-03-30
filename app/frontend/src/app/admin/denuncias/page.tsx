@@ -149,6 +149,8 @@ export default function AdminDenunciasPage() {
           <div className="space-y-4">
             {denuncias.map((denuncia) => {
               const isOpen = selectedDenuncia?.id === denuncia.id;
+              const denunciadoNome = denuncia.gestor?.user?.nome || denuncia.colaboradorNome || 'Desconhecido';
+              const isColaborador = !denuncia.gestor && !!denuncia.colaboradorNome;
               return (
               <Card
                 key={denuncia.id}
@@ -163,11 +165,14 @@ export default function AdminDenunciasPage() {
                     setComentarioRH(denuncia.comentarioRH || '');
                   }}
                 >
-                  <Avatar src={denuncia.gestor?.foto} alt={denuncia.gestor?.user?.nome} size="md" />
+                  <Avatar src={denuncia.gestor?.foto} alt={denunciadoNome} size="md" />
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <h3 className="font-bold text-neutral-900 dark:text-neutral-100">{denuncia.gestor?.user?.nome}</h3>
+                      <h3 className="font-bold text-neutral-900 dark:text-neutral-100">{denunciadoNome}</h3>
+                      {isColaborador && (
+                        <span className="px-2 py-0.5 text-xs font-bold border-2 border-neutral-400 text-neutral-500 dark:text-neutral-400">Colaborador</span>
+                      )}
                       <Badge variant="danger">{denuncia.tipo.replace(/_/g, ' ')}</Badge>
                       <span className={`px-2 py-0.5 text-xs font-bold border-2 border-neutral-900 ${statusColors[denuncia.status]}`}>
                         {denuncia.status.replace(/_/g, ' ')}

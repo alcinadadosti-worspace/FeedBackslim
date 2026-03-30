@@ -27,3 +27,10 @@ export const denunciaLimiter = rateLimit({
   max: 10, // máximo 10 denúncias por hora por IP
   message: { error: 'Muitas denuncias enviadas. Tente novamente em 1 hora.' }
 });
+
+// Rate limiter para consulta de protocolo (anti brute-force)
+export const consultaProtocoloLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hora
+  max: 10, // máximo 10 tentativas por hora por IP
+  message: { error: 'Muitas tentativas de consulta. Tente novamente em 1 hora.' }
+});

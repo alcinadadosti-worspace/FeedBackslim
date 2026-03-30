@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import { authenticateToken, AuthRequest, requireAdmin } from '../middleware/auth.middleware';
-import { denunciaLimiter } from '../middleware/rateLimit.middleware';
+import { denunciaLimiter, consultaProtocoloLimiter } from '../middleware/rateLimit.middleware';
 import { sendComplaintNotification } from '../services/slack.service';
 import { StatusDenuncia, TipoDenuncia } from '../models';
 import { col, docRef, getManyByIds, normalizeFirestoreData, snapData } from '../firestoreRepo';
@@ -272,7 +272,7 @@ router.patch('/:id/status', authenticateToken, requireAdmin, async (req: AuthReq
 });
 
 // Consultar denúncia por código de protocolo (público - sem autenticação)
-router.get('/consultar/:codigo', async (req: AuthRequest, res: Response) => {
+router.get('/consultar/:codigo', consultaProtocoloLimiter, async (req: AuthRequest, res: Response) => {
   try {
     const { codigo } = req.params;
     const snap = await col('denuncias').where('codigoProtocolo', '==', codigo).limit(1).get();
