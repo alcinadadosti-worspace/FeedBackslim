@@ -1,5 +1,4 @@
 services:
-  # Ouvidoria - Unified Backend + Frontend
   - type: web
     name: ouvidoria
     runtime: node
@@ -7,17 +6,19 @@ services:
     buildCommand: npm install && npm run build
     startCommand: npm start
     envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: JWT_SECRET
+        generateValue: true
       - key: FIREBASE_PROJECT_ID
         sync: false
       - key: FIREBASE_CLIENT_EMAIL
         sync: false
       - key: FIREBASE_PRIVATE_KEY
         sync: false
-      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+      - key: SLACK_BOT_TOKEN
         sync: false
-      - key: JWT_SECRET
-        generateValue: true
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: 3000
+      - key: SLACK_RH_CHANNEL
+        value: rh-notifications

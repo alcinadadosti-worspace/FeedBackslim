@@ -1,7 +1,6 @@
 import { Colaborador } from '../models';
 
 export const COLABORADORES: Colaborador[] = [
-  { slackId: 'U09QM89NV5W', nome: 'Alcina' },
   { slackId: 'U07Q9HE3KGA', nome: 'Amanda Santos Costa' },
   { slackId: 'U087E6YNPRD', nome: 'Ana Paula' },
   { slackId: 'U08ERHMN6F9', nome: 'Analuiza Santos' },

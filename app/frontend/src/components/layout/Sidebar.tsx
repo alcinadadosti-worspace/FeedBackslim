@@ -33,6 +33,7 @@ export function Sidebar() {
   const isColaborador = user?.role === 'COLABORADOR';
   const isGestor = user?.role === 'GESTOR';
   const isAdmin = user?.role === 'RH_ADMIN';
+  const isAdminWithGestorProfile = isAdmin && !!user?.gestor;
 
   const navigation = [
     {
@@ -75,7 +76,7 @@ export function Sidebar() {
       name: 'Minhas Avaliações',
       href: '/dashboard/gestor',
       icon: BarChart3,
-      show: isGestor,
+      show: isGestor || isAdminWithGestorProfile,
     },
     {
       name: 'Painel Admin',
