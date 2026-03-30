@@ -91,7 +91,7 @@ export default function PerfilPage() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  const isGestor = user?.role === 'GESTOR';
+  const isGestor = user?.role === 'GESTOR' || (user?.role === 'RH_ADMIN' && !!user?.gestor);
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
