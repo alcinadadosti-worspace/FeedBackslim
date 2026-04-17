@@ -6,6 +6,7 @@ export const COLABORADORES: Colaborador[] = [
   { slackId: 'U08ERHMN6F9', nome: 'Analuiza Santos' },
   { slackId: 'U08JFCGBFSA', nome: 'Anny Karoline' },
   { slackId: 'U088MU33XRC', nome: 'Bruna Cândido' },
+  { slackId: 'U0ATLF85Z9U', nome: 'Brunna Isabelly Silva Lima' },
   { slackId: 'U08NLNHF29G', nome: 'Bruna Rayane' },
   { slackId: 'U089NSW1BDG', nome: 'Caique Santos' },
   { slackId: 'U0939HA46LW', nome: 'Camilla Emanuelle Lopes De Almeida' },
