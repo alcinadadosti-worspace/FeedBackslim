@@ -170,7 +170,7 @@ export default function AvaliarPage() {
     <PublicLayout>
       {showConfirmation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white dark:bg-neutral-800 border-3 border-neutral-900 dark:border-neutral-100 shadow-brutal-lg p-8 max-w-md w-full">
+          <div className="bg-white dark:bg-neutral-800 border-3 border-neutral-900 dark:border-neutral-100 shadow-brutal-lg p-5 sm:p-8 max-w-md w-full">
             <div className="flex items-center gap-3 mb-4">
               <CheckCircle2 className="w-7 h-7 text-primary-600 shrink-0" />
               <h2 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">Confirmar envio?</h2>

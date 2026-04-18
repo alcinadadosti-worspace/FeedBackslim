@@ -80,10 +80,10 @@ export default function ConsultarDenunciaPage() {
       <div className="max-w-lg mx-auto">
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 bg-blue-400 border-3 border-neutral-900 flex items-center justify-center">
-              <Search className="w-6 h-6 text-white" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-400 border-3 border-neutral-900 flex items-center justify-center shrink-0">
+              <Search className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
-            <h1 className="text-3xl font-display font-bold text-neutral-900 dark:text-neutral-100">Consultar Denúncia</h1>
+            <h1 className="text-xl sm:text-3xl font-display font-bold text-neutral-900 dark:text-neutral-100">Consultar Denúncia</h1>
           </div>
           <p className="text-neutral-600 dark:text-neutral-300">
             Digite o código de protocolo recebido ao registrar sua denúncia para consultar o andamento.

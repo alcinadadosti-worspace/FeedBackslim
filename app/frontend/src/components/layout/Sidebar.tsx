@@ -15,12 +15,18 @@ import {
   BarChart3,
   Trophy,
   MessageSquare,
+  X,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { Avatar } from '@/components/ui/Avatar';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
-export function Sidebar() {
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuthStore();
@@ -36,125 +42,96 @@ export function Sidebar() {
   const isAdminWithGestorProfile = isAdmin && !!user?.gestor;
 
   const navigation = [
-    {
-      name: 'Dashboard',
-      href: '/dashboard',
-      icon: LayoutDashboard,
-      show: true,
-    },
-    {
-      name: 'Gestores',
-      href: '/gestores',
-      icon: Users,
-      show: true,
-    },
-    {
-      name: 'Ranking',
-      href: '/ranking',
-      icon: Trophy,
-      show: true,
-    },
-    {
-      name: 'Feedbacks',
-      href: '/feedbacks',
-      icon: MessageSquare,
-      show: true,
-    },
-    {
-      name: 'Avaliar',
-      href: '/avaliar',
-      icon: Star,
-      show: isColaborador,
-    },
-    {
-      name: 'Ouvidoria',
-      href: '/ouvidoria',
-      icon: AlertTriangle,
-      show: isColaborador,
-    },
-    {
-      name: 'Minhas Avaliações',
-      href: '/dashboard/gestor',
-      icon: BarChart3,
-      show: isGestor || isAdminWithGestorProfile,
-    },
-    {
-      name: 'Painel Admin',
-      href: '/admin',
-      icon: Settings,
-      show: isAdmin,
-    },
-    {
-      name: 'Denúncias',
-      href: '/admin/denuncias',
-      icon: AlertTriangle,
-      show: isAdmin,
-    },
-    {
-      name: 'Meu Perfil',
-      href: '/perfil',
-      icon: User,
-      show: true,
-    },
+    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, show: true },
+    { name: 'Gestores', href: '/gestores', icon: Users, show: true },
+    { name: 'Ranking', href: '/ranking', icon: Trophy, show: true },
+    { name: 'Feedbacks', href: '/feedbacks', icon: MessageSquare, show: true },
+    { name: 'Avaliar', href: '/avaliar', icon: Star, show: isColaborador },
+    { name: 'Ouvidoria', href: '/ouvidoria', icon: AlertTriangle, show: isColaborador },
+    { name: 'Minhas Avaliações', href: '/dashboard/gestor', icon: BarChart3, show: isGestor || isAdminWithGestorProfile },
+    { name: 'Painel Admin', href: '/admin', icon: Settings, show: isAdmin },
+    { name: 'Denúncias', href: '/admin/denuncias', icon: AlertTriangle, show: isAdmin },
+    { name: 'Meu Perfil', href: '/perfil', icon: User, show: true },
   ];
 
   return (
-    <aside className="fixed left-0 top-0 h-full w-64 bg-white dark:bg-neutral-800 border-r-3 border-neutral-900 dark:border-neutral-100 flex flex-col z-50">
-      {/* Logo */}
-      <div className="p-6 border-b-3 border-neutral-900 dark:border-neutral-100">
-        <Link href="/dashboard" className="flex items-center gap-3">
-          <Image src="/logo.png" alt="Ouvidoria" width={48} height={48} className="object-contain" />
-          <span className="font-display font-bold text-xl">Ouvidoria</span>
-        </Link>
-      </div>
+    <>
+      {/* Overlay for mobile */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={onClose}
+        />
+      )}
 
-      {/* Navigation */}
-      <nav className="flex-1 py-4 overflow-y-auto">
-        <ul className="space-y-1 px-3">
-          {navigation
-            .filter((item) => item.show)
-            .map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-              const Icon = item.icon;
-
-              return (
-                <li key={item.name}>
-                  <Link
-                    href={item.href}
-                    className={clsx(
-                      'flex items-center gap-3 px-4 py-3 font-semibold transition-colors border-l-4',
-                      isActive
-                        ? 'text-neutral-900 dark:text-neutral-100 bg-primary-50 dark:bg-primary-900/30 border-primary-500'
-                        : 'text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-700 border-transparent'
-                    )}
-                  >
-                    <Icon className="w-5 h-5" />
-                    {item.name}
-                  </Link>
-                </li>
-              );
-            })}
-        </ul>
-      </nav>
-
-      {/* User Section */}
-      <div className="p-4 border-t-3 border-neutral-900 dark:border-neutral-100">
-        <div className="flex items-center gap-3 mb-4">
-          <Avatar src={user?.gestor?.foto || user?.avatar} alt={user?.nome} size="sm" />
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-neutral-900 dark:text-neutral-100 truncate">{user?.nome}</p>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 uppercase">{user?.role?.replace('_', ' ')}</p>
-          </div>
-          <ThemeToggle />
+      <aside
+        className={clsx(
+          'fixed left-0 top-0 h-full w-64 bg-white dark:bg-neutral-800 border-r-3 border-neutral-900 dark:border-neutral-100 flex flex-col z-50 transition-transform duration-300',
+          isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        )}
+      >
+        {/* Logo */}
+        <div className="p-4 md:p-6 border-b-3 border-neutral-900 dark:border-neutral-100 flex items-center justify-between">
+          <Link href="/dashboard" className="flex items-center gap-3" onClick={onClose}>
+            <Image src="/logo.png" alt="Ouvidoria" width={40} height={40} className="object-contain" />
+            <span className="font-display font-bold text-xl">Ouvidoria</span>
+          </Link>
+          <button
+            onClick={onClose}
+            className="md:hidden p-1 text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-2 w-full px-4 py-2 text-neutral-600 dark:text-neutral-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-semibold"
-        >
-          <LogOut className="w-5 h-5" />
-          Sair
-        </button>
-      </div>
-    </aside>
+
+        {/* Navigation */}
+        <nav className="flex-1 py-3 overflow-y-auto">
+          <ul className="space-y-0.5 px-2">
+            {navigation
+              .filter((item) => item.show)
+              .map((item) => {
+                const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                const Icon = item.icon;
+                return (
+                  <li key={item.name}>
+                    <Link
+                      href={item.href}
+                      onClick={onClose}
+                      className={clsx(
+                        'flex items-center gap-3 px-3 py-2.5 font-semibold transition-colors border-l-4',
+                        isActive
+                          ? 'text-neutral-900 dark:text-neutral-100 bg-primary-50 dark:bg-primary-900/30 border-primary-500'
+                          : 'text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-700 border-transparent'
+                      )}
+                    >
+                      <Icon className="w-5 h-5 shrink-0" />
+                      <span className="text-sm">{item.name}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+          </ul>
+        </nav>
+
+        {/* User Section */}
+        <div className="p-3 border-t-3 border-neutral-900 dark:border-neutral-100">
+          <div className="flex items-center gap-2 mb-3">
+            <Avatar src={user?.gestor?.foto || user?.avatar} alt={user?.nome} size="sm" />
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-sm text-neutral-900 dark:text-neutral-100 truncate">{user?.nome}</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 uppercase">{user?.role?.replace('_', ' ')}</p>
+            </div>
+            <ThemeToggle />
+          </div>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-neutral-600 dark:text-neutral-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-semibold"
+          >
+            <LogOut className="w-4 h-4" />
+            Sair
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }

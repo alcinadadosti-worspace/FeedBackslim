@@ -122,9 +122,9 @@ export default function FeedbacksPage() {
     <SmartLayout>
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-display font-bold text-neutral-900 dark:text-neutral-100">Feedbacks Públicos</h1>
-          <p className="text-neutral-600 dark:text-neutral-300 mt-1">Feedbacks que foram compartilhados publicamente</p>
+        <div className="mb-5 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-display font-bold text-neutral-900 dark:text-neutral-100">Feedbacks Públicos</h1>
+          <p className="text-sm sm:text-base text-neutral-600 dark:text-neutral-300 mt-1">Feedbacks que foram compartilhados publicamente</p>
         </div>
 
         {/* Tabs */}
@@ -172,20 +172,20 @@ export default function FeedbacksPage() {
               <div className="space-y-4">
                 {avaliacoes.map((av: any) => (
                   <Card key={av.id}>
-                    <div className="flex items-start gap-4">
+                    <div className="flex items-start gap-3">
                       <Link href={`/gestores/${av.gestor?.id}`} className="shrink-0">
-                        <Avatar src={av.gestor?.foto} alt={av.gestor?.user?.nome} size="md" />
+                        <Avatar src={av.gestor?.foto} alt={av.gestor?.user?.nome} size="sm" />
                       </Link>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
                           <Link href={`/gestores/${av.gestor?.id}`} className="hover:underline">
-                            <span className="font-bold text-neutral-900 dark:text-neutral-100">{av.gestor?.user?.nome || 'Gestor'}</span>
+                            <span className="font-bold text-sm sm:text-base text-neutral-900 dark:text-neutral-100">{av.gestor?.user?.nome || 'Gestor'}</span>
                             {av.gestor?.cargo && (
-                              <span className="text-sm text-neutral-500 dark:text-neutral-400 ml-2">{av.gestor.cargo}</span>
+                              <span className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 ml-1 sm:ml-2">{av.gestor.cargo}</span>
                             )}
                           </Link>
-                          <div className="flex items-center gap-3">
-                            <SimpleRating value={av.nota} />
+                          <div className="flex items-center gap-2">
+                            <SimpleRating value={av.nota} size="sm" />
                             <span className="text-xs text-neutral-400 dark:text-neutral-500">{formatDate(av.createdAt)}</span>
                           </div>
                         </div>
@@ -238,15 +238,15 @@ export default function FeedbacksPage() {
               <div className="space-y-4">
                 {feedbacksCol.map((fb: any) => (
                   <Card key={fb.id}>
-                    <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 bg-neutral-200 dark:bg-neutral-600 border-2 border-neutral-300 dark:border-neutral-500 flex items-center justify-center font-bold text-neutral-600 dark:text-neutral-100 shrink-0">
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 bg-neutral-200 dark:bg-neutral-600 border-2 border-neutral-300 dark:border-neutral-500 flex items-center justify-center font-bold text-sm text-neutral-600 dark:text-neutral-100 shrink-0">
                         {fb.colaboradorNome?.charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-3 flex-wrap">
-                          <span className="font-bold text-neutral-900 dark:text-neutral-100">{fb.colaboradorNome}</span>
-                          <div className="flex items-center gap-3">
-                            <SimpleRating value={fb.nota} />
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <span className="font-bold text-sm sm:text-base text-neutral-900 dark:text-neutral-100">{fb.colaboradorNome}</span>
+                          <div className="flex items-center gap-2">
+                            <SimpleRating value={fb.nota} size="sm" />
                             <span className="text-xs text-neutral-400 dark:text-neutral-500">{formatDate(fb.createdAt)}</span>
                           </div>
                         </div>

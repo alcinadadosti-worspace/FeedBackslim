@@ -179,9 +179,9 @@ export default function PerfilPage() {
     <MainLayout>
       <div className="max-w-3xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-display font-bold text-neutral-900">Meu Perfil</h1>
-          <p className="text-neutral-600 mt-1">
+        <div className="mb-5 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-display font-bold text-neutral-900 dark:text-neutral-100">Meu Perfil</h1>
+          <p className="text-sm sm:text-base text-neutral-600 dark:text-neutral-300 mt-1">
             Gerencie suas informações pessoais
           </p>
         </div>
@@ -314,18 +314,18 @@ export default function PerfilPage() {
           <Card className="mt-6">
             <CardTitle className="mb-4">Suas Estatísticas</CardTitle>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-gold-50 border-2 border-neutral-900 text-center">
-                  <p className="text-3xl font-bold text-neutral-900">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div className="p-3 sm:p-4 bg-gold-50 border-2 border-neutral-900 text-center">
+                  <p className="text-2xl sm:text-3xl font-bold text-neutral-900">
                     {user.gestor.mediaAvaliacao?.toFixed(1) || '0.0'}
                   </p>
-                  <p className="text-sm text-neutral-600">Média de Avaliação</p>
+                  <p className="text-xs sm:text-sm text-neutral-600">Média de Avaliação</p>
                 </div>
-                <div className="p-4 bg-primary-50 border-2 border-neutral-900 text-center">
-                  <p className="text-3xl font-bold text-neutral-900">
+                <div className="p-3 sm:p-4 bg-primary-50 border-2 border-neutral-900 text-center">
+                  <p className="text-2xl sm:text-3xl font-bold text-neutral-900">
                     {user.gestor.totalAvaliacoes || 0}
                   </p>
-                  <p className="text-sm text-neutral-600">Total de Avaliações</p>
+                  <p className="text-xs sm:text-sm text-neutral-600">Total de Avaliações</p>
                 </div>
               </div>
             </CardContent>

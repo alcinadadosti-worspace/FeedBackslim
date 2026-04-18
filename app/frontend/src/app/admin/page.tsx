@@ -3,14 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
-  Users,
-  Star,
-  AlertTriangle,
-  Download,
-  ArrowRight,
-  BarChart3,
-  MessageSquare,
-  Clock,
+  Users, Star, AlertTriangle, Download, ArrowRight,
+  BarChart3, MessageSquare, Clock,
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardTitle, CardContent } from '@/components/ui/Card';
@@ -23,14 +17,7 @@ import { Loading } from '@/components/ui/Loading';
 import { dashboardAPI } from '@/lib/api';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  Legend,
-} from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 const COLORS = ['#98d4a0', '#d4b896', '#f87171', '#60a5fa'];
 
@@ -88,114 +75,95 @@ export default function AdminDashboardPage() {
     <MainLayout>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 sm:mb-8">
           <div>
-            <h1 className="text-3xl font-display font-bold text-neutral-900 dark:text-neutral-100">Painel Administrativo</h1>
-            <p className="text-neutral-600 dark:text-neutral-300 mt-1">
+            <h1 className="text-2xl sm:text-3xl font-display font-bold text-neutral-900 dark:text-neutral-100">Painel Administrativo</h1>
+            <p className="text-sm sm:text-base text-neutral-600 dark:text-neutral-300 mt-1">
               Visão geral de avaliações e denúncias
             </p>
           </div>
-
-          <div className="flex items-center gap-4">
-            <Select
-              options={periodoOptions}
-              value={periodo}
-              onChange={(e) => setPeriodo(e.target.value)}
-              className="w-48"
-            />
+          <div className="w-full sm:w-48">
+            <Select options={periodoOptions} value={periodo} onChange={(e) => setPeriodo(e.target.value)} />
           </div>
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-12">
-            <Loading size="lg" />
-          </div>
+          <div className="flex justify-center py-12"><Loading size="lg" /></div>
         ) : (
           <>
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-8">
-              <Card className="bg-blue-50 dark:bg-blue-900/20">
+            {/* Stats Cards — 2 cols on mobile, 4 on md, 7 on lg */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 sm:gap-4 mb-6 sm:mb-8">
+              <Card className="bg-blue-50 dark:bg-blue-900/20 p-3 sm:p-6">
                 <div className="flex flex-col gap-1">
-                  <Users className="w-6 h-6 text-blue-600" />
-                  <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{data?.stats?.totalUsers || 0}</p>
+                  <Users className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+                  <p className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-100">{data?.stats?.totalUsers || 0}</p>
                   <p className="text-xs text-neutral-600 dark:text-neutral-300">Usuários</p>
                 </div>
               </Card>
-
-              <Card className="bg-primary-50 dark:bg-primary-900/30">
+              <Card className="bg-primary-50 dark:bg-primary-900/30 p-3 sm:p-6">
                 <div className="flex flex-col gap-1">
-                  <Users className="w-6 h-6 text-primary-600" />
-                  <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{data?.stats?.totalGestores || 0}</p>
+                  <Users className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600" />
+                  <p className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-100">{data?.stats?.totalGestores || 0}</p>
                   <p className="text-xs text-neutral-600 dark:text-neutral-300">Gestores</p>
                 </div>
               </Card>
-
-              <Card className="bg-gold-50 dark:bg-gold-900/20">
+              <Card className="bg-gold-50 dark:bg-gold-900/20 p-3 sm:p-6">
                 <div className="flex flex-col gap-1">
-                  <Star className="w-6 h-6 text-gold-600" />
-                  <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{data?.stats?.totalAvaliacoes || 0}</p>
+                  <Star className="w-5 h-5 sm:w-6 sm:h-6 text-gold-600" />
+                  <p className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-100">{data?.stats?.totalAvaliacoes || 0}</p>
                   <p className="text-xs text-neutral-600 dark:text-neutral-300">Avaliações</p>
                 </div>
               </Card>
-
-              <Card className="bg-yellow-50 dark:bg-yellow-900/20">
+              <Card className="bg-yellow-50 dark:bg-yellow-900/20 p-3 sm:p-6">
                 <div className="flex flex-col gap-1">
-                  <BarChart3 className="w-6 h-6 text-yellow-600" />
-                  <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{data?.stats?.mediaGeralAvaliacoes ?? '—'}</p>
+                  <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600" />
+                  <p className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-100">{data?.stats?.mediaGeralAvaliacoes ?? '—'}</p>
                   <p className="text-xs text-neutral-600 dark:text-neutral-300">Média Geral</p>
                 </div>
               </Card>
-
-              <Card className="bg-purple-50 dark:bg-purple-900/20">
+              <Card className="bg-purple-50 dark:bg-purple-900/20 p-3 sm:p-6">
                 <div className="flex flex-col gap-1">
-                  <MessageSquare className="w-6 h-6 text-purple-600" />
-                  <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{data?.stats?.totalFeedbacksColaboradores || 0}</p>
+                  <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
+                  <p className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-100">{data?.stats?.totalFeedbacksColaboradores || 0}</p>
                   <p className="text-xs text-neutral-600 dark:text-neutral-300">Feedbacks Col.</p>
                 </div>
               </Card>
-
-              <Card className="bg-red-50 dark:bg-red-900/20">
+              <Card className="bg-red-50 dark:bg-red-900/20 p-3 sm:p-6">
                 <div className="flex flex-col gap-1">
-                  <AlertTriangle className="w-6 h-6 text-red-600" />
-                  <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{data?.stats?.totalDenuncias || 0}</p>
+                  <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
+                  <p className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-100">{data?.stats?.totalDenuncias || 0}</p>
                   <p className="text-xs text-neutral-600 dark:text-neutral-300">Denúncias</p>
                 </div>
               </Card>
-
-              <Card className="bg-orange-50 dark:bg-orange-900/20">
+              <Card className="bg-orange-50 dark:bg-orange-900/20 p-3 sm:p-6">
                 <div className="flex flex-col gap-1">
-                  <Clock className="w-6 h-6 text-orange-600" />
-                  <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{data?.stats?.denunciasPendentes || 0}</p>
+                  <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" />
+                  <p className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-100">{data?.stats?.denunciasPendentes || 0}</p>
                   <p className="text-xs text-neutral-600 dark:text-neutral-300">Pendentes</p>
                 </div>
               </Card>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">
               {/* Top Gestores */}
               <Card>
-                <div className="flex items-center justify-between mb-6">
-                  <CardTitle>Top Gestores</CardTitle>
+                <div className="flex items-center justify-between mb-4 sm:mb-6">
+                  <CardTitle className="text-base sm:text-lg">Top Gestores</CardTitle>
                   <Link href="/ranking">
-                    <Button variant="outline" size="sm">
-                      Ver Todos <ArrowRight className="w-4 h-4" />
-                    </Button>
+                    <Button variant="outline" size="sm">Ver Todos <ArrowRight className="w-4 h-4" /></Button>
                   </Link>
                 </div>
                 <CardContent>
-                  <div className="space-y-3">
+                  <div className="space-y-2 sm:space-y-3">
                     {data?.topGestores?.slice(0, 5).map((gestor: any, index: number) => (
-                      <div
-                        key={gestor.id}
-                        className="flex items-center gap-3 p-3 border-2 border-neutral-200 dark:border-neutral-700"
-                      >
-                        <span className="w-8 h-8 bg-gold-400 border-2 border-neutral-900 flex items-center justify-center font-bold">
+                      <div key={gestor.id} className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 border-2 border-neutral-200 dark:border-neutral-700">
+                        <span className="w-7 h-7 sm:w-8 sm:h-8 bg-gold-400 border-2 border-neutral-900 flex items-center justify-center font-bold text-sm shrink-0">
                           {index + 1}
                         </span>
                         <Avatar src={gestor.foto} alt={gestor.user?.nome} size="sm" />
-                        <div className="flex-1">
-                          <p className="font-semibold dark:text-neutral-100">{gestor.user?.nome}</p>
-                          <p className="text-xs text-neutral-500 dark:text-neutral-400">{gestor.cargo}</p>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm dark:text-neutral-100 truncate">{gestor.user?.nome}</p>
+                          <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">{gestor.cargo}</p>
                         </div>
                         <SimpleRating value={gestor.mediaAvaliacao} size="sm" />
                       </div>
@@ -206,20 +174,12 @@ export default function AdminDashboardPage() {
 
               {/* Denúncias por Tipo */}
               <Card>
-                <CardTitle className="mb-6">Denúncias por Tipo</CardTitle>
+                <CardTitle className="mb-4 sm:mb-6 text-base sm:text-lg">Denúncias por Tipo</CardTitle>
                 <CardContent>
                   {denunciasPorTipoData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={250}>
+                    <ResponsiveContainer width="100%" height={220}>
                       <PieChart>
-                        <Pie
-                          data={denunciasPorTipoData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={100}
-                          paddingAngle={5}
-                          dataKey="value"
-                        >
+                        <Pie data={denunciasPorTipoData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={5} dataKey="value">
                           {denunciasPorTipoData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                           ))}
@@ -229,9 +189,7 @@ export default function AdminDashboardPage() {
                       </PieChart>
                     </ResponsiveContainer>
                   ) : (
-                    <p className="text-center text-neutral-500 dark:text-neutral-400 py-8">
-                      Nenhuma denúncia registrada
-                    </p>
+                    <p className="text-center text-sm text-neutral-500 dark:text-neutral-400 py-8">Nenhuma denúncia registrada</p>
                   )}
                 </CardContent>
               </Card>
@@ -239,20 +197,20 @@ export default function AdminDashboardPage() {
 
             {/* Gestores com mais denúncias */}
             {data?.gestoresDenunciados?.length > 0 && (
-              <Card className="mb-8 bg-red-50 dark:bg-red-900/20">
-                <CardTitle className="flex items-center gap-2 mb-6">
-                  <AlertTriangle className="w-6 h-6 text-red-600" />
+              <Card className="mb-6 sm:mb-8 bg-red-50 dark:bg-red-900/20">
+                <CardTitle className="flex items-center gap-2 mb-4 sm:mb-6 text-base sm:text-lg">
+                  <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
                   Gestores com Denúncias
                 </CardTitle>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                     {data.gestoresDenunciados.map((item: any) => (
-                      <div key={item.gestor?.id} className="p-4 bg-white dark:bg-neutral-700 border-2 border-neutral-900 dark:border-neutral-500">
-                        <div className="flex items-center gap-3">
-                          <Avatar src={item.gestor?.foto} alt={item.gestor?.user?.nome} size="md" />
-                          <div className="flex-1">
-                            <p className="font-bold dark:text-neutral-100">{item.gestor?.user?.nome}</p>
-                            <p className="text-sm text-neutral-600 dark:text-neutral-300">{item.gestor?.cargo}</p>
+                      <div key={item.gestor?.id} className="p-3 sm:p-4 bg-white dark:bg-neutral-700 border-2 border-neutral-900 dark:border-neutral-500">
+                        <div className="flex items-center gap-2 sm:gap-3">
+                          <Avatar src={item.gestor?.foto} alt={item.gestor?.user?.nome} size="sm" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-sm dark:text-neutral-100 truncate">{item.gestor?.user?.nome}</p>
+                            <p className="text-xs text-neutral-600 dark:text-neutral-300 truncate">{item.gestor?.cargo}</p>
                           </div>
                           <Badge variant="danger">{item.totalDenuncias}</Badge>
                         </div>
@@ -263,16 +221,16 @@ export default function AdminDashboardPage() {
               </Card>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">
               {/* Avaliações Recentes */}
               <Card>
-                <CardTitle className="mb-6">Avaliações Recentes</CardTitle>
+                <CardTitle className="mb-4 sm:mb-6 text-base sm:text-lg">Avaliações Recentes</CardTitle>
                 <CardContent>
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                  <div className="space-y-2 sm:space-y-3 max-h-80 overflow-y-auto">
                     {data?.avaliacoesRecentes?.map((avaliacao: any) => (
-                      <div key={avaliacao.id} className="p-3 border-2 border-neutral-200 dark:border-neutral-700">
-                        <div className="flex items-center justify-between mb-2">
-                          <p className="font-semibold text-sm dark:text-neutral-100">{avaliacao.gestor?.user?.nome}</p>
+                      <div key={avaliacao.id} className="p-2.5 sm:p-3 border-2 border-neutral-200 dark:border-neutral-700">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <p className="font-semibold text-xs sm:text-sm dark:text-neutral-100 truncate">{avaliacao.gestor?.user?.nome}</p>
                           <SimpleRating value={avaliacao.nota} size="sm" />
                         </div>
                         <p className="text-xs text-neutral-500 dark:text-neutral-400">
@@ -286,21 +244,19 @@ export default function AdminDashboardPage() {
 
               {/* Denúncias Recentes */}
               <Card>
-                <div className="flex items-center justify-between mb-6">
-                  <CardTitle>Denúncias Recentes</CardTitle>
+                <div className="flex items-center justify-between mb-4 sm:mb-6">
+                  <CardTitle className="text-base sm:text-lg">Denúncias Recentes</CardTitle>
                   <Link href="/admin/denuncias">
-                    <Button variant="danger" size="sm">
-                      Ver Todas <ArrowRight className="w-4 h-4" />
-                    </Button>
+                    <Button variant="danger" size="sm">Ver Todas <ArrowRight className="w-4 h-4" /></Button>
                   </Link>
                 </div>
                 <CardContent>
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                  <div className="space-y-2 sm:space-y-3 max-h-80 overflow-y-auto">
                     {data?.denunciasRecentes?.map((denuncia: any) => (
-                      <div key={denuncia.id} className="p-3 border-2 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
-                        <div className="flex items-center justify-between mb-2">
-                          <p className="font-semibold text-sm dark:text-neutral-100">{denuncia.gestor?.user?.nome}</p>
-                          <Badge variant="danger">{denuncia.tipo.replace(/_/g, ' ')}</Badge>
+                      <div key={denuncia.id} className="p-2.5 sm:p-3 border-2 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <p className="font-semibold text-xs sm:text-sm dark:text-neutral-100 truncate">{denuncia.gestor?.user?.nome}</p>
+                          <Badge variant="danger" className="shrink-0 text-xs">{denuncia.tipo.replace(/_/g, ' ')}</Badge>
                         </div>
                         <p className="text-xs text-neutral-600 dark:text-neutral-300 line-clamp-2">{denuncia.descricao}</p>
                         <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
@@ -308,11 +264,8 @@ export default function AdminDashboardPage() {
                         </p>
                       </div>
                     ))}
-
                     {(!data?.denunciasRecentes || data.denunciasRecentes.length === 0) && (
-                      <p className="text-center text-neutral-500 dark:text-neutral-400 py-4">
-                        Nenhuma denúncia recente
-                      </p>
+                      <p className="text-center text-sm text-neutral-500 dark:text-neutral-400 py-4">Nenhuma denúncia recente</p>
                     )}
                   </div>
                 </CardContent>
@@ -321,20 +274,20 @@ export default function AdminDashboardPage() {
 
             {/* Export Buttons */}
             <Card>
-              <CardTitle className="mb-6">Exportar Dados</CardTitle>
+              <CardTitle className="mb-4 sm:mb-6 text-base sm:text-lg">Exportar Dados</CardTitle>
               <CardContent>
-                <div className="flex flex-wrap gap-4">
-                  <Button variant="outline" onClick={() => handleExport('avaliacoes')}>
-                    <Download className="w-5 h-5" />
-                    Exportar Avaliações
+                <div className="flex flex-wrap gap-3">
+                  <Button variant="outline" size="sm" onClick={() => handleExport('avaliacoes')}>
+                    <Download className="w-4 h-4" />
+                    Avaliações
                   </Button>
-                  <Button variant="outline" onClick={() => handleExport('denuncias')}>
-                    <Download className="w-5 h-5" />
-                    Exportar Denúncias
+                  <Button variant="outline" size="sm" onClick={() => handleExport('denuncias')}>
+                    <Download className="w-4 h-4" />
+                    Denúncias
                   </Button>
-                  <Button variant="outline" onClick={() => handleExport('gestores')}>
-                    <Download className="w-5 h-5" />
-                    Exportar Gestores
+                  <Button variant="outline" size="sm" onClick={() => handleExport('gestores')}>
+                    <Download className="w-4 h-4" />
+                    Gestores
                   </Button>
                 </div>
               </CardContent>
