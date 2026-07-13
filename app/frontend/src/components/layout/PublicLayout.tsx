@@ -75,7 +75,7 @@ export function PublicLayout({ children, showBackButton = true }: PublicLayoutPr
       <footer className="border-t-3 border-neutral-900 dark:border-neutral-100 bg-white dark:bg-neutral-800 px-4 sm:px-6 py-4 mt-auto">
         <div className="max-w-6xl mx-auto text-center text-xs sm:text-sm text-neutral-500">
           <p>Ouvidoria - Plataforma de Feedback Empresarial</p>
-          <p className="mt-1">Suas respostas sao anonimas e confidenciais.</p>
+          <p className="mt-1">Suas respostas são anônimas e confidenciais.</p>
         </div>
       </footer>
     </div>

@@ -99,7 +99,7 @@ export default function LoginPage() {
           className="inline-flex items-center gap-2 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-neutral-100 mb-6 font-medium"
         >
           <ArrowLeft className="w-4 h-4" />
-          Voltar para inicio
+          Voltar para início
         </Link>
 
         {/* Logo */}

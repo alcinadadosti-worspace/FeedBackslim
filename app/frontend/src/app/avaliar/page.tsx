@@ -341,12 +341,12 @@ export default function AvaliarPage() {
                 <div className="p-4 bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800 flex items-start gap-3">
                   <Shield className="w-5 h-5 text-green-600 mt-0.5" />
                   <p className="text-sm text-green-700 dark:text-green-400">
-                    <strong>100% Anonimo:</strong> Sua avaliacao e completamente anonima.
+                    <strong>100% Anônimo:</strong> Sua avaliação é completamente anônima.
                     {tipoAvaliado === 'colaborador' && (
                       <> O colaborador receberá uma notificação no Slack e poderá escolher se deseja tornar o feedback público no site.</>
                     )}
                     {tipoAvaliado === 'gestor' && (
-                      <> Nao rastreamos sua identidade e o gestor nao sabera quem enviou o feedback.</>
+                      <> Não rastreamos sua identidade e o gestor não saberá quem enviou o feedback.</>
                     )}
                   </p>
                 </div>

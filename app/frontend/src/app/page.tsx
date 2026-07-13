@@ -37,7 +37,7 @@ export default function HomePage() {
               Sua voz importa!
             </h1>
             <p className="text-base sm:text-lg text-neutral-600 dark:text-neutral-300 max-w-2xl mx-auto">
-              Compartilhe sua experiencia de forma anonima e ajude a construir um ambiente de trabalho melhor para todos.
+              Compartilhe sua experiência de forma anônima e ajude a construir um ambiente de trabalho melhor para todos.
             </p>
           </div>
 
@@ -53,7 +53,7 @@ export default function HomePage() {
                   <h2 className="text-xl sm:text-2xl font-black text-neutral-900 dark:text-neutral-100">Feedbacks</h2>
                 </div>
                 <p className="text-sm sm:text-base text-neutral-600 dark:text-neutral-300 mb-3 sm:mb-4">
-                  Avalie seus gestores de forma anonima. Compartilhe elogios, sugestoes ou criticas construtivas.
+                  Avalie seus gestores de forma anônima. Compartilhe elogios, sugestões ou críticas construtivas.
                 </p>
                 <div className="flex items-center gap-2 text-primary-600 dark:text-primary-400 font-bold group-hover:gap-3 transition-all text-sm sm:text-base">
                   <span>Avaliar gestor ou colaborador</span>
@@ -72,10 +72,10 @@ export default function HomePage() {
                   <h2 className="text-xl sm:text-2xl font-black text-neutral-900 dark:text-neutral-100">Ouvidoria</h2>
                 </div>
                 <p className="text-sm sm:text-base text-neutral-600 dark:text-neutral-300 mb-3 sm:mb-4">
-                  Relate situacoes serias de forma confidencial. Suas denuncias serao tratadas pelo RH com sigilo.
+                  Relate situações sérias de forma confidencial. Suas denúncias serão tratadas pelo RH com sigilo.
                 </p>
                 <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-bold group-hover:gap-3 transition-all text-sm sm:text-base">
-                  <span>Fazer denuncia</span>
+                  <span>Fazer denúncia</span>
                   <span>→</span>
                 </div>
               </div>
@@ -115,7 +115,7 @@ export default function HomePage() {
             <div className="flex items-center gap-2 sm:gap-3 bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800 px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg">
               <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 dark:text-green-400 shrink-0" />
               <span className="text-xs sm:text-sm text-green-700 dark:text-green-400 font-medium">
-                100% Anonimo - Suas respostas nao sao rastreadas
+                100% Anônimo - Suas respostas não são rastreadas
               </span>
             </div>
           </div>
