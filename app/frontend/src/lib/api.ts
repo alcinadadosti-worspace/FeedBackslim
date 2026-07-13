@@ -99,6 +99,8 @@ export const dashboardAPI = {
 // Colaboradores endpoints
 export const colaboradoresAPI = {
   list: () => api.get('/colaboradores'),
+  create: (data: { slackId: string; nome: string }) => api.post('/colaboradores', data),
+  remove: (slackId: string) => api.delete(`/colaboradores/${encodeURIComponent(slackId)}`),
 };
 
 // Feedbacks para colaboradores

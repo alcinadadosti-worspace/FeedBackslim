@@ -15,6 +15,7 @@ import {
   BarChart3,
   Trophy,
   MessageSquare,
+  UserPlus,
   X,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
@@ -51,6 +52,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     { name: 'Minhas Avaliações', href: '/dashboard/gestor', icon: BarChart3, show: isGestor || isAdminWithGestorProfile },
     { name: 'Painel Admin', href: '/admin', icon: Settings, show: isAdmin },
     { name: 'Denúncias', href: '/admin/denuncias', icon: AlertTriangle, show: isAdmin },
+    { name: 'Colaboradores', href: '/admin/colaboradores', icon: UserPlus, show: isAdmin },
     { name: 'Meu Perfil', href: '/perfil', icon: User, show: true },
   ];
 

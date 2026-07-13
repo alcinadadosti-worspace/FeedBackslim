@@ -82,8 +82,16 @@ export default function AdminDashboardPage() {
               Visão geral de avaliações e denúncias
             </p>
           </div>
-          <div className="w-full sm:w-48">
-            <Select options={periodoOptions} value={periodo} onChange={(e) => setPeriodo(e.target.value)} />
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            <Link href="/admin/colaboradores" className="w-full sm:w-auto">
+              <Button variant="outline" size="sm" className="w-full">
+                <Users className="w-4 h-4" />
+                Colaboradores
+              </Button>
+            </Link>
+            <div className="w-full sm:w-48">
+              <Select options={periodoOptions} value={periodo} onChange={(e) => setPeriodo(e.target.value)} />
+            </div>
           </div>
         </div>
 

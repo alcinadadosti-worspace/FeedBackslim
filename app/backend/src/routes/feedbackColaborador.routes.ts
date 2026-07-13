@@ -5,7 +5,7 @@ import crypto from 'crypto';
 import { avaliacaoLimiter } from '../middleware/rateLimit.middleware';
 import { col, docRef, normalizeFirestoreData, snapData } from '../firestoreRepo';
 import { sendCollaboratorFeedbackNotification } from '../services/slack.service';
-import { COLABORADORES } from '../data/colaboradores';
+import { findColaboradorBySlackId } from '../colaboradorRepo';
 
 const router = Router();
 
@@ -41,7 +41,7 @@ router.post('/', avaliacaoLimiter, async (req: Request, res: Response) => {
   try {
     const data = createFeedbackSchema.parse(req.body);
 
-    const colaborador = COLABORADORES.find((c) => c.slackId === data.colaboradorSlackId);
+    const colaborador = await findColaboradorBySlackId(data.colaboradorSlackId);
     if (!colaborador) {
       return res.status(404).json({ error: 'Colaborador não encontrado' });
     }

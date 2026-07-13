@@ -6,7 +6,7 @@ import { denunciaLimiter, consultaProtocoloLimiter } from '../middleware/rateLim
 import { sendComplaintNotification } from '../services/slack.service';
 import { StatusDenuncia, TipoDenuncia } from '../models';
 import { col, docRef, getManyByIds, normalizeFirestoreData, snapData } from '../firestoreRepo';
-import { COLABORADORES } from '../data/colaboradores';
+import { findColaboradorBySlackId } from '../colaboradorRepo';
 
 const router = Router();
 
@@ -163,7 +163,7 @@ router.post('/', denunciaLimiter, async (req: AuthRequest, res: Response) => {
       denunciadoNome = gestorUser?.nome || 'Gestor';
       denunciadoSlackId = gestor.slackUserId ?? null;
     } else if (data.colaboradorSlackId) {
-      const colaborador = COLABORADORES.find((c) => c.slackId === data.colaboradorSlackId);
+      const colaborador = await findColaboradorBySlackId(data.colaboradorSlackId);
       if (!colaborador) {
         return res.status(404).json({ error: 'Colaborador não encontrado' });
       }
