@@ -208,22 +208,26 @@ export default function AdminDashboardPage() {
               <Card className="mb-6 sm:mb-8 bg-red-50 dark:bg-red-900/20">
                 <CardTitle className="flex items-center gap-2 mb-4 sm:mb-6 text-base sm:text-lg">
                   <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
-                  Gestores com Denúncias
+                  Pessoas com Denúncias
                 </CardTitle>
                 <CardContent>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                    {data.gestoresDenunciados.map((item: any) => (
-                      <div key={item.gestor?.id} className="p-3 sm:p-4 bg-white dark:bg-neutral-700 border-2 border-neutral-900 dark:border-neutral-500">
-                        <div className="flex items-center gap-2 sm:gap-3">
-                          <Avatar src={item.gestor?.foto} alt={item.gestor?.user?.nome} size="sm" />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-bold text-sm dark:text-neutral-100 truncate">{item.gestor?.user?.nome}</p>
-                            <p className="text-xs text-neutral-600 dark:text-neutral-300 truncate">{item.gestor?.cargo}</p>
+                    {data.gestoresDenunciados.map((item: any) => {
+                      const nome = item.gestor?.user?.nome || item.colaboradorNome || 'Desconhecido';
+                      const subtitulo = item.gestor ? item.gestor.cargo : item.colaboradorSlackId ? 'Colaborador' : 'Gestor removido';
+                      return (
+                        <div key={item.gestorId || item.colaboradorSlackId}className="p-3 sm:p-4 bg-white dark:bg-neutral-700 border-2 border-neutral-900 dark:border-neutral-500">
+                          <div className="flex items-center gap-2 sm:gap-3">
+                            <Avatar src={item.gestor?.foto} alt={nome} size="sm" />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-sm dark:text-neutral-100 truncate">{nome}</p>
+                              <p className="text-xs text-neutral-600 dark:text-neutral-300 truncate">{subtitulo}</p>
+                            </div>
+                            <Badge variant="danger">{item.totalDenuncias}</Badge>
                           </div>
-                          <Badge variant="danger">{item.totalDenuncias}</Badge>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>
@@ -263,7 +267,7 @@ export default function AdminDashboardPage() {
                     {data?.denunciasRecentes?.map((denuncia: any) => (
                       <div key={denuncia.id} className="p-2.5 sm:p-3 border-2 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
                         <div className="flex items-center justify-between gap-2 mb-1">
-                          <p className="font-semibold text-xs sm:text-sm dark:text-neutral-100 truncate">{denuncia.gestor?.user?.nome}</p>
+                          <p className="font-semibold text-xs sm:text-sm dark:text-neutral-100 truncate">{denuncia.gestor?.user?.nome || denuncia.colaboradorNome || 'Desconhecido'}</p>
                           <Badge variant="danger" className="shrink-0 text-xs">{denuncia.tipo.replace(/_/g, ' ')}</Badge>
                         </div>
                         <p className="text-xs text-neutral-600 dark:text-neutral-300 line-clamp-2">{denuncia.descricao}</p>

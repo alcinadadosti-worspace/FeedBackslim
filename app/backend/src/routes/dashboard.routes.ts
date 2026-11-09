@@ -210,12 +210,24 @@ router.get('/admin', authenticateToken, requireAdmin, async (req: AuthRequest, r
 
     // Denúncias all
     const denunciasAll = denunciasAllSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
-    const denunciasCountByGestorId = denunciasAll.reduce<Record<string, number>>((acc: Record<string, number>, d: any) => {
-      acc[d.gestorId] = (acc[d.gestorId] || 0) + 1;
+    // Agrupar por pessoa denunciada: gestor (gestorId) ou colaborador (colaboradorSlackId)
+    type Denunciado = { gestorId: string | null; colaboradorSlackId: string | null; colaboradorNome: string | null; total: number };
+    const denunciadosByKey = denunciasAll.reduce<Record<string, Denunciado>>((acc: Record<string, Denunciado>, d: any) => {
+      const key = d.gestorId ? `g:${d.gestorId}` : d.colaboradorSlackId ? `c:${d.colaboradorSlackId}` : null;
+      if (!key) return acc;
+      if (!acc[key]) {
+        acc[key] = {
+          gestorId: d.gestorId || null,
+          colaboradorSlackId: d.gestorId ? null : d.colaboradorSlackId,
+          colaboradorNome: d.gestorId ? null : (d.colaboradorNome || null),
+          total: 0
+        };
+      }
+      acc[key].total += 1;
       return acc;
     }, {});
-    const topDenunciados = (Object.entries(denunciasCountByGestorId) as Array<[string, number]>)
-      .sort((a, b) => b[1] - a[1])
+    const topDenunciados = Object.values(denunciadosByKey)
+      .sort((a, b) => b.total - a.total)
       .slice(0, 5);
 
     // Denúncias recentes (reusar denunciasAllSnap, evita query extra)
@@ -228,7 +240,7 @@ router.get('/admin', authenticateToken, requireAdmin, async (req: AuthRequest, r
 
     // Buscar todos os IDs necessários e resolver em paralelo
     const topGestorIds = topGestoresRaw.map((g: any) => g.userId);
-    const denunciadosGestorIds = topDenunciados.map(([gestorId]) => gestorId);
+    const denunciadosGestorIds = topDenunciados.map((d) => d.gestorId).filter(Boolean) as string[];
     const avalGestorIds = [...new Set(avaliacoesRecentesRaw.map((a: any) => a.gestorId).filter(Boolean))];
     const denRecGestorIds = [...new Set(denunciasRecentesRaw.map((d: any) => d.gestorId).filter(Boolean))];
 
@@ -262,12 +274,15 @@ router.get('/admin', authenticateToken, requireAdmin, async (req: AuthRequest, r
       user: topGestoresUsersById[g.userId] ? { nome: (topGestoresUsersById[g.userId] as any).nome } : null
     }));
 
-    const gestoresDenunciados = topDenunciados.map(([gestorId, total]) => {
-      const gestor = denunciadosGestoresById[gestorId];
+    const gestoresDenunciados = topDenunciados.map((item) => {
+      const gestor = item.gestorId ? denunciadosGestoresById[item.gestorId] : undefined;
       const gestorUser = gestor ? denunciadosUsersById[(gestor as any).userId] : undefined;
       return {
         gestor: gestor ? { ...(gestor as any), user: gestorUser ? { nome: (gestorUser as any).nome } : null } : null,
-        totalDenuncias: total
+        gestorId: item.gestorId,
+        colaboradorSlackId: item.colaboradorSlackId,
+        colaboradorNome: item.colaboradorNome,
+        totalDenuncias: item.total
       };
     });
 
@@ -361,7 +376,8 @@ router.get('/export', authenticateToken, requireAdmin, async (req: AuthRequest, 
             const gestor = gestoresById[d.gestorId];
             const gestorUser = gestor ? usersById[(gestor as any).userId] : undefined;
             return {
-              gestorNome: (gestorUser as any)?.nome || '',
+              denunciadoNome: (gestorUser as any)?.nome || d.colaboradorNome || '',
+              denunciadoTipo: d.gestorId ? 'Gestor' : d.colaboradorSlackId ? 'Colaborador' : '',
               tipo: d.tipo ?? '',
               tipoManifestacao: d.tipoManifestacao ?? '',
               temas: Array.isArray(d.temas) ? d.temas.join(' | ') : '',

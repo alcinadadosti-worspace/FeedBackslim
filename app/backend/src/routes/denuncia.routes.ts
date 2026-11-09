@@ -304,10 +304,10 @@ router.get('/:id', authenticateToken, requireAdmin, async (req: AuthRequest, res
     }
 
     const [gestorSnap, autorSnap] = await Promise.all([
-      docRef('gestores', denuncia.gestorId).get(),
+      denuncia.gestorId ? docRef('gestores', denuncia.gestorId).get() : Promise.resolve(null),
       denuncia.autorId ? docRef('users', denuncia.autorId).get() : Promise.resolve(null)
     ]);
-    const gestor = snapData<any>(gestorSnap as any);
+    const gestor = gestorSnap ? snapData<any>(gestorSnap as any) : null;
     const autor = autorSnap ? snapData<any>(autorSnap as any) : null;
 
     const gestorUserSnap = gestor ? await docRef('users', gestor.userId).get() : null;

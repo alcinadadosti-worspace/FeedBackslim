@@ -1,5 +1,6 @@
 import { WebClient } from '@slack/web-api';
 import { col, normalizeFirestoreData } from '../firestoreRepo';
+import { Role } from '../models';
 
 const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
 
@@ -60,13 +61,9 @@ async function getHighLeadershipSlackUserIds(): Promise<string[]> {
   const fromEnv = parseCommaList(process.env.SLACK_DENUNCIA_ESCALATION_IDS);
   if (fromEnv.length) return fromEnv;
 
-  const emails = [
-    'fernando@cpalcina.com',
-    'luiz@cpalcina.com',
-    'rafaela@cpalcina.com'
-  ];
-
-  const usersSnap = await col('users').where('email', 'in', emails).get();
+  // Destinatários = todos os administradores (RH_ADMIN). Quem ganha ou perde o papel
+  // de admin na plataforma passa a receber / deixa de receber as denúncias automaticamente.
+  const usersSnap = await col('users').where('role', '==', Role.RH_ADMIN).get();
   const users = usersSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
 
   const slackIds: string[] = [];
