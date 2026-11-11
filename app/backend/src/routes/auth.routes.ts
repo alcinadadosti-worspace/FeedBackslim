@@ -14,7 +14,10 @@ const registerSchema = z.object({
   email: z.string().email('Email inválido'),
   password: z.string().min(5, 'Senha deve ter no mínimo 5 caracteres'),
   nome: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres'),
-  role: z.nativeEnum(Role).optional()
+  // RH_ADMIN nunca pode ser escolhido no cadastro público — só é concedido manualmente.
+  role: z.enum([Role.COLABORADOR, Role.GESTOR], {
+    errorMap: () => ({ message: 'Perfil inválido' })
+  }).optional()
 });
 
 const loginSchema = z.object({
