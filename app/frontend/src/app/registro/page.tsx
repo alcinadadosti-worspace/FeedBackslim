@@ -9,7 +9,6 @@ import { Mail, Lock, User, ArrowRight } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
 import { Card } from '@/components/ui/Card';
 
 export default function RegistroPage() {
@@ -19,7 +18,6 @@ export default function RegistroPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState('COLABORADOR');
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -48,7 +46,8 @@ export default function RegistroPage() {
     setIsLoading(true);
 
     try {
-      await register({ email, password, nome, role });
+      // O cadastro cria sempre conta de colaborador; gestores são criados pelo RH
+      await register({ email, password, nome });
       toast.success('Conta criada com sucesso!');
       router.push('/dashboard');
     } catch (error: any) {
@@ -57,11 +56,6 @@ export default function RegistroPage() {
       setIsLoading(false);
     }
   };
-
-  const roleOptions = [
-    { value: 'COLABORADOR', label: 'Colaborador' },
-    { value: 'GESTOR', label: 'Gestor' },
-  ];
 
   return (
     <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
@@ -105,13 +99,6 @@ export default function RegistroPage() {
               />
               <Mail className="absolute right-4 top-10 w-5 h-5 text-neutral-400" />
             </div>
-
-            <Select
-              label="Tipo de Conta"
-              options={roleOptions}
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-            />
 
             <div className="relative">
               <Input

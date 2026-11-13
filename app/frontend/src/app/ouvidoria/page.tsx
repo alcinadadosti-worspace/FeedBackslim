@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { AlertTriangle, Shield, Eye, EyeOff, Send, Copy, CheckCheck, CheckCircle2, UserCheck, Users } from 'lucide-react';
+import { AlertTriangle, Shield, Eye, EyeOff, Send, Copy, CheckCheck, CheckCircle2, UserCheck, Users, Paperclip, X, Loader2, XCircle, Clock } from 'lucide-react';
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { Card, CardTitle, CardContent } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -13,7 +13,22 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { Loading } from '@/components/ui/Loading';
-import { gestoresAPI, denunciasAPI, colaboradoresAPI } from '@/lib/api';
+import { gestoresAPI, denunciasAPI, colaboradoresAPI, provasDenunciaAPI } from '@/lib/api';
+import {
+  ACCEPT_PROVAS,
+  MAX_BYTES_POR_PROVA,
+  MAX_BYTES_PROVAS_POR_DENUNCIA,
+  MAX_PROVAS_POR_DENUNCIA,
+  formatarTamanho,
+  provaPermitida,
+} from '@/lib/provas';
+
+type EnvioProva = {
+  arquivo: File;
+  status: 'aguardando' | 'enviando' | 'enviado' | 'erro';
+  progresso: number;
+  erro?: string;
+};
 
 const tiposManifestacao = [
   { value: '', label: 'Selecione o tipo' },
@@ -111,6 +126,24 @@ export default function OuvidoriaPage() {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [codigoProtocolo, setCodigoProtocolo] = useState<string | null>(null);
   const [copiado, setCopiado] = useState(false);
+
+  // Provas (fotos e vídeos): escolhidas no formulário e enviadas logo depois de a denúncia ser registrada
+  const [provas, setProvas] = useState<File[]>([]);
+  const [envios, setEnvios] = useState<EnvioProva[]>([]);
+  const [tokenAnexos, setTokenAnexos] = useState<string | null>(null);
+  const enviandoProvas = envios.some((e) => e.status === 'aguardando' || e.status === 'enviando');
+  const provasComErro = envios.filter((e) => e.status === 'erro').length;
+
+  // Avisa antes de fechar a página no meio do envio das provas
+  useEffect(() => {
+    if (!enviandoProvas) return;
+    const aviso = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', aviso);
+    return () => window.removeEventListener('beforeunload', aviso);
+  }, [enviandoProvas]);
 
   useEffect(() => {
     loadGestores();
@@ -222,6 +255,70 @@ export default function OuvidoriaPage() {
     setShowConfirmation(true);
   };
 
+  const adicionarProvas = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const escolhidos = Array.from(e.target.files || []);
+    e.target.value = '';
+    const novas: File[] = [];
+    let total = provas.reduce((soma, f) => soma + f.size, 0);
+    for (const arquivo of escolhidos) {
+      if (!provaPermitida(arquivo)) {
+        toast.error(`"${arquivo.name}" não é uma foto nem um vídeo.`);
+        continue;
+      }
+      if (arquivo.size > MAX_BYTES_POR_PROVA) {
+        toast.error(`"${arquivo.name}" tem mais de 30 MB.`);
+        continue;
+      }
+      if (provas.length + novas.length >= MAX_PROVAS_POR_DENUNCIA) {
+        toast.error(`Você pode anexar no máximo ${MAX_PROVAS_POR_DENUNCIA} arquivos.`);
+        break;
+      }
+      if (total + arquivo.size > MAX_BYTES_PROVAS_POR_DENUNCIA) {
+        toast.error('As provas passam de 150 MB no total.');
+        continue;
+      }
+      total += arquivo.size;
+      novas.push(arquivo);
+    }
+    if (novas.length) setProvas((prev) => [...prev, ...novas]);
+  };
+
+  const atualizarEnvio = (indice: number, dados: Partial<EnvioProva>) => {
+    setEnvios((prev) => prev.map((e, i) => (i === indice ? { ...e, ...dados } : e)));
+  };
+
+  // Envia um arquivo por vez. Se o servidor estiver ocupado (503), espera e tenta de novo.
+  const enviarProvas = async (token: string, lista: EnvioProva[], indices: number[]) => {
+    for (const i of indices) {
+      atualizarEnvio(i, { status: 'enviando', progresso: 0, erro: undefined });
+      let tentativas = 0;
+      while (true) {
+        try {
+          await provasDenunciaAPI.enviar(token, lista[i].arquivo, (progresso) => atualizarEnvio(i, { progresso }));
+          atualizarEnvio(i, { status: 'enviado', progresso: 100 });
+          break;
+        } catch (error: any) {
+          if (error.response?.status === 503 && tentativas < 5) {
+            tentativas++;
+            await new Promise((r) => setTimeout(r, 3000));
+            continue;
+          }
+          atualizarEnvio(i, {
+            status: 'erro',
+            erro: error.response?.data?.error || 'Falha no envio. Verifique sua conexão.',
+          });
+          break;
+        }
+      }
+    }
+  };
+
+  const tentarEnviarDeNovo = () => {
+    if (!tokenAnexos) return;
+    const indices = envios.map((e, i) => (e.status === 'erro' ? i : -1)).filter((i) => i >= 0);
+    void enviarProvas(tokenAnexos, envios, indices);
+  };
+
   const handleConfirmSubmit = async () => {
     setShowConfirmation(false);
     setSubmitting(true);
@@ -244,7 +341,19 @@ export default function OuvidoriaPage() {
       });
 
       toast.success('Denúncia registrada com sucesso. O RH será notificado.');
+      const token: string | undefined = response.data.tokenAnexos;
+      // Sem token não há como enviar: as provas aparecem como não enviadas em vez de "aguardando" para sempre
+      const lista: EnvioProva[] = provas.map((arquivo) =>
+        token
+          ? { arquivo, status: 'aguardando', progresso: 0 }
+          : { arquivo, status: 'erro', progresso: 0, erro: 'Não foi possível enviar as provas desta denúncia.' }
+      );
+      setEnvios(lista);
+      setTokenAnexos(token || null);
       setCodigoProtocolo(response.data.codigoProtocolo);
+      if (lista.length && token) {
+        void enviarProvas(token, lista, lista.map((_, i) => i));
+      }
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Erro ao registrar denúncia');
     } finally {
@@ -305,10 +414,54 @@ export default function OuvidoriaPage() {
             </button>
           </div>
 
+          {envios.length > 0 && (
+            <div className="bg-white dark:bg-neutral-800 border-3 border-neutral-900 dark:border-neutral-100 p-4 mb-6 text-left">
+              <p className="flex items-center gap-2 font-bold text-neutral-900 dark:text-neutral-100 mb-1">
+                <Paperclip className="w-4 h-4" />
+                Provas
+              </p>
+              <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-3">
+                {enviandoProvas
+                  ? 'Enviando suas provas. Não feche esta página até terminar.'
+                  : provasComErro
+                    ? 'Algumas provas não foram enviadas. Tente de novo; o prazo para enviar é de 1 hora.'
+                    : 'Todas as provas foram enviadas ao RH.'}
+              </p>
+              <ul className="space-y-2">
+                {envios.map((envio, i) => (
+                  <li key={i} className="text-sm">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {envio.status === 'enviado' && <CheckCheck className="w-4 h-4 shrink-0 text-green-600" />}
+                      {envio.status === 'enviando' && <Loader2 className="w-4 h-4 shrink-0 animate-spin text-neutral-500" />}
+                      {envio.status === 'aguardando' && <Clock className="w-4 h-4 shrink-0 text-neutral-400" />}
+                      {envio.status === 'erro' && <XCircle className="w-4 h-4 shrink-0 text-red-600" />}
+                      <span className="truncate flex-1 text-neutral-800 dark:text-neutral-100">{envio.arquivo.name}</span>
+                      <span className="shrink-0 text-xs text-neutral-500 dark:text-neutral-400">{formatarTamanho(envio.arquivo.size)}</span>
+                    </div>
+                    {envio.status === 'enviando' && (
+                      <div className="h-1.5 mt-1 bg-neutral-200 dark:bg-neutral-700">
+                        <div className="h-full bg-primary-500 transition-all" style={{ width: `${envio.progresso}%` }} />
+                      </div>
+                    )}
+                    {envio.status === 'erro' && <p className="text-xs text-red-600 mt-0.5">{envio.erro}</p>}
+                  </li>
+                ))}
+              </ul>
+              {!enviandoProvas && provasComErro > 0 && tokenAnexos && (
+                <button
+                  onClick={tentarEnviarDeNovo}
+                  className="mt-3 px-4 py-2 text-sm font-semibold border-2 border-neutral-900 dark:border-neutral-100 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-700"
+                >
+                  Tentar enviar de novo
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-300 dark:border-yellow-700 text-left mb-6">
             <p className="font-bold text-yellow-800 dark:text-yellow-300 mb-1">⚠️ Guarde este código!</p>
             <p className="text-sm text-yellow-700 dark:text-yellow-400">
-              Este código é a única forma de consultar o andamento da sua denúncia.
+              Este código é a única forma de consultar o andamento da sua denúncia e os comentários do RH.
               Ele não será enviado por e-mail ou qualquer outro canal.
             </p>
           </div>
@@ -346,6 +499,11 @@ export default function OuvidoriaPage() {
               <strong className="text-neutral-900 dark:text-neutral-100">{anonima ? 'anônima' : 'identificada'}</strong>{' '}
               contra <strong className="text-neutral-900 dark:text-neutral-100">{denunciadoNome}</strong>.
             </p>
+            {provas.length > 0 && (
+              <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-2">
+                {provas.length === 1 ? '1 prova será enviada' : `${provas.length} provas serão enviadas`} logo em seguida.
+              </p>
+            )}
             <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">Esta ação não pode ser desfeita.</p>
             <div className="flex gap-3">
               <button
@@ -520,6 +678,57 @@ export default function OuvidoriaPage() {
                   <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                     Sempre que possível, informe fatos, datas, locais, envolvidos (nomes ou cargos) e impactos.
                   </p>
+                </div>
+
+                {/* Provas */}
+                <div>
+                  <p className="block text-sm font-bold text-neutral-900 dark:text-neutral-100 mb-2 uppercase tracking-wide">
+                    Provas (opcional)
+                  </p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3">
+                    Anexe fotos ou vídeos que ajudem a entender o ocorrido: até {MAX_PROVAS_POR_DENUNCIA} arquivos de até 30 MB
+                    cada. Fotos e vídeos podem guardar dados como local e modelo do celular; para manter o anonimato,
+                    prefira capturas de tela.
+                  </p>
+                  <input
+                    id="provas-input"
+                    type="file"
+                    multiple
+                    accept={ACCEPT_PROVAS}
+                    className="hidden"
+                    onChange={adicionarProvas}
+                  />
+                  {provas.length < MAX_PROVAS_POR_DENUNCIA && (
+                    <label
+                      htmlFor="provas-input"
+                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold border-2 border-neutral-900 dark:border-neutral-100 text-neutral-900 dark:text-neutral-100 bg-white dark:bg-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-600 cursor-pointer"
+                    >
+                      <Paperclip className="w-4 h-4" />
+                      Adicionar fotos ou vídeos
+                    </label>
+                  )}
+                  {provas.length > 0 && (
+                    <ul className="mt-3 space-y-1.5">
+                      {provas.map((arquivo, i) => (
+                        <li
+                          key={`${arquivo.name}-${i}`}
+                          className="flex items-center gap-2 px-2 py-1.5 text-sm bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 min-w-0"
+                        >
+                          <Paperclip className="w-4 h-4 shrink-0 text-neutral-500" />
+                          <span className="truncate flex-1 text-neutral-800 dark:text-neutral-100">{arquivo.name}</span>
+                          <span className="shrink-0 text-xs text-neutral-500 dark:text-neutral-400">{formatarTamanho(arquivo.size)}</span>
+                          <button
+                            type="button"
+                            onClick={() => setProvas((prev) => prev.filter((_, j) => j !== i))}
+                            className="shrink-0 p-0.5 text-neutral-500 hover:text-red-600"
+                            aria-label={`Remover ${arquivo.name}`}
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
 
                 <Select

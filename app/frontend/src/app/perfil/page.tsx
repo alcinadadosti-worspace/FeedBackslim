@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { User, Mail, Briefcase, Building, Camera, Save, Slack } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -93,9 +93,24 @@ export default function PerfilPage() {
 
   const isGestor = user?.role === 'GESTOR' || (user?.role === 'RH_ADMIN' && !!user?.gestor);
 
+  // Ao abrir a página direto (ou recarregar), o usuário ainda não foi carregado quando os
+  // campos são criados. Preenche quando ele chegar; senão "Salvar" apagaria os dados.
+  useEffect(() => {
+    if (!user) return;
+    setNome(user.nome || '');
+    setAvatar(user.avatar || '');
+    setCargo(user.gestor?.cargo || '');
+    setDepartamento(user.gestor?.departamento || '');
+    setBio(user.gestor?.bio || '');
+    setSlackUserId(user.gestor?.slackUserId || '');
+    setFoto(user.gestor?.foto || '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    const input = e.target;
+    if (!file || !user) return;
 
     setUploading(true);
     try {
@@ -128,13 +143,15 @@ export default function PerfilPage() {
 
       toast.success('Foto enviada com sucesso!');
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Erro ao enviar foto');
+      toast.error(error.response?.data?.error || error.message || 'Erro ao enviar foto');
     } finally {
       setUploading(false);
+      input.value = ''; // permite escolher o mesmo arquivo de novo depois de um erro
     }
   };
 
   const handleSave = async () => {
+    if (!user) return;
     setSaving(true);
 
     try {

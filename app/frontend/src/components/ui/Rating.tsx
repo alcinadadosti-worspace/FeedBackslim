@@ -106,7 +106,7 @@ export function SimpleRating({ value, maxValue = 10, size = 'md' }: SimpleRating
           )}
         />
       ))}
-      <span className="ml-1 font-bold text-neutral-900">{value.toFixed(1)}</span>
+      <span className="ml-1 font-bold text-neutral-900">{Number(value ?? 0).toFixed(1)}</span>
     </div>
   );
 }

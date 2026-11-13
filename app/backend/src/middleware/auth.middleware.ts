@@ -16,10 +16,16 @@ interface CachedUser { id: string; email: string; role: Role; expiresAt: number;
 const userCache = new Map<string, CachedUser>();
 const USER_CACHE_TTL_MS = 60_000;
 
+export function invalidarCacheUsuario(userId: string) {
+  userCache.delete(userId);
+}
+
 async function resolveUserFromToken(token: string): Promise<{ id: string; email: string; role: Role } | null> {
   const decoded = jwt.verify(token, process.env.JWT_SECRET || 'ouvidoria-secret') as {
     id: string; email: string; role: Role;
   };
+  // Tokens com "aud" são de envio de provas da denúncia e não valem como login
+  if (!decoded?.id || (decoded as any).aud) return null;
 
   const cached = userCache.get(decoded.id);
   if (cached && cached.expiresAt > Date.now()) {

@@ -1,4 +1,5 @@
 import { Router, Response } from 'express';
+import { randomInt } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import { authenticateToken, AuthRequest, requireAdmin } from '../middleware/auth.middleware';
@@ -7,8 +8,28 @@ import { sendComplaintNotification } from '../services/slack.service';
 import { StatusDenuncia, TipoDenuncia } from '../models';
 import { col, docRef, getManyByIds, normalizeFirestoreData, snapData } from '../firestoreRepo';
 import { findColaboradorBySlackId } from '../colaboradorRepo';
+import {
+  historicoParaDenunciante,
+  historicoParaRH,
+  listarHistorico,
+  MAX_CARACTERES_COMENTARIO,
+  registrarNoHistorico
+} from '../services/denunciaHistorico.service';
+import { gerarTokenProvas } from '../services/denunciaProvas.service';
+import denunciaProvasRoutes from './denunciaProvas.routes';
+import { semDenunciasContraOUsuario, usuarioEhDenunciado } from '../services/conflitoInteresse';
 
 const router = Router();
+
+// Provas (fotos e vídeos) enviadas ao registrar a denúncia: /anexos e /:id/anexos
+router.use(denunciaProvasRoutes);
+
+const statusLabels: Record<StatusDenuncia, string> = {
+  [StatusDenuncia.PENDENTE]: 'Pendente',
+  [StatusDenuncia.EM_ANALISE]: 'Em análise',
+  [StatusDenuncia.RESOLVIDA]: 'Resolvida',
+  [StatusDenuncia.ARQUIVADA]: 'Arquivada'
+};
 
 const createDenunciaSchema = z.object({
   gestorId: z.string().uuid('ID do gestor inválido').optional(),
@@ -43,37 +64,37 @@ const updateStatusSchema = z.object({
 
 async function gerarCodigoProtocolo(): Promise<string> {
   for (let i = 0; i < 5; i++) {
-    const codigo = Math.floor(100000 + Math.random() * 900000).toString();
+    const codigo = randomInt(100000, 1000000).toString();
     const snap = await col('denuncias').where('codigoProtocolo', '==', codigo).limit(1).get();
     if (snap.empty) return codigo;
   }
   // Fallback com timestamp se todas as tentativas colidirem (praticamente impossível)
-  return `${Math.floor(100000 + Math.random() * 900000)}${Date.now().toString(36)}`;
+  return `${randomInt(100000, 1000000)}${Date.now().toString(36)}`;
 }
 
 // Listar denúncias (apenas admin)
-// Nota: combinações de filtros múltiplos exigem índices compostos no Firestore
-// (gestorId+createdAt, status+createdAt, tipo+createdAt) — criar em firestore.indexes.json
+// Filtra só por igualdade e ordena/pagina em memória: assim nenhuma combinação de filtros
+// depende de índice composto no Firestore (o volume de denúncias é pequeno).
 router.get('/', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const { gestorId, status, tipo, page = '1', limit = '20' } = req.query;
+    const { gestorId, status, tipo } = req.query;
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const take = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
+    const skip = (page - 1) * take;
 
-    const take = Number(limit);
-    const skip = (Number(page) - 1) * take;
-
-    // Construir query dinamicamente com filtros nativos do Firestore
     let query: any = col('denuncias');
     if (gestorId) query = query.where('gestorId', '==', gestorId);
     if (status) query = query.where('status', '==', status);
     if (tipo) query = query.where('tipo', '==', tipo);
 
-    const [countSnap, dataSnap] = await Promise.all([
-      query.count().get(),
-      query.orderBy('createdAt', 'desc').offset(skip).limit(take).get()
-    ]);
+    const todasSnap = await query.get();
+    const todas = (await semDenunciasContraOUsuario(
+      req.user!.id,
+      todasSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }))
+    )).sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-    const total = countSnap.data().count;
-    const denuncias = dataSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
+    const total = todas.length;
+    const denuncias = todas.slice(skip, skip + take);
 
     const gestorIds = denuncias.map((d: any) => d.gestorId).filter(Boolean);
     const autorIds = denuncias.map((d: any) => d.autorId).filter(Boolean);
@@ -106,13 +127,14 @@ router.get('/', authenticateToken, requireAdmin, async (req: AuthRequest, res: R
     res.json({
       data: denunciasFormatadas,
       pagination: {
-        page: Number(page),
-        limit: Number(limit),
+        page,
+        limit: take,
         total,
-        pages: Math.ceil(total / Number(limit))
+        pages: Math.ceil(total / take)
       }
     });
   } catch (error) {
+    console.error('Erro ao listar denúncias:', error);
     res.status(500).json({ error: 'Erro ao listar denúncias' });
   }
 });
@@ -121,7 +143,10 @@ router.get('/', authenticateToken, requireAdmin, async (req: AuthRequest, res: R
 router.get('/stats', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const snap = await col('denuncias').get();
-    const denuncias = snap.docs.map((d: any) => normalizeFirestoreData(d.data()) as any);
+    const denuncias = await semDenunciasContraOUsuario(
+      req.user!.id,
+      snap.docs.map((d: any) => normalizeFirestoreData(d.data()) as any)
+    );
     const total = denuncias.length;
 
     const porStatus = denuncias.reduce<Record<string, number>>((acc: Record<string, number>, d: any) => {
@@ -241,6 +266,8 @@ router.post('/', denunciaLimiter, async (req: AuthRequest, res: Response) => {
       status: StatusDenuncia.PENDENTE,
       codigoProtocolo,
       createdAt: now,
+      // Permite anexar fotos e vídeos a esta denúncia na próxima 1 hora
+      tokenAnexos: gerarTokenProvas(denunciaId),
       message: 'Denúncia registrada com sucesso. O RH será notificado.'
     });
   } catch (error) {
@@ -257,10 +284,33 @@ router.patch('/:id/status', authenticateToken, requireAdmin, async (req: AuthReq
   try {
     const data = updateStatusSchema.parse(req.body);
 
+    const ref = docRef('denuncias', req.params.id);
+    const atual = await ref.get();
+    if (!atual.exists || (await usuarioEhDenunciado(req.user!.id, atual.data() as any))) {
+      return res.status(404).json({ error: 'Denúncia não encontrada' });
+    }
+    const statusAnterior = atual.get('status');
+
     const now = new Date();
     const updateData: any = { status: data.status, updatedAt: now };
-    if (data.comentarioRH !== undefined) updateData.comentarioRH = data.comentarioRH;
-    await docRef('denuncias', req.params.id).set(updateData, { merge: true });
+    await ref.set(updateData, { merge: true });
+
+    // Mudança de status e comentário vão para o histórico, que o denunciante vê pelo protocolo
+    try {
+      if (statusAnterior !== data.status) {
+        await registrarNoHistorico(req.params.id, {
+          tipo: 'STATUS',
+          texto: `Status alterado para "${statusLabels[data.status]}".`,
+          autorUserId: req.user!.id
+        });
+      }
+      const comentario = data.comentarioRH?.trim();
+      if (comentario) {
+        await registrarNoHistorico(req.params.id, { tipo: 'COMENTARIO', texto: comentario, autorUserId: req.user!.id });
+      }
+    } catch (historicoError) {
+      console.error('Erro ao registrar no histórico da denúncia:', historicoError);
+    }
 
     res.json({ id: req.params.id, ...updateData });
   } catch (error) {
@@ -280,16 +330,61 @@ router.get('/consultar/:codigo', consultaProtocoloLimiter, async (req: AuthReque
       return res.status(404).json({ error: 'Código de protocolo não encontrado' });
     }
     const denuncia = normalizeFirestoreData(snap.docs[0].data()) as any;
+    const historico = await listarHistorico(snap.docs[0].id);
+    res.setHeader('Cache-Control', 'no-store');
     res.json({
       codigoProtocolo: denuncia.codigoProtocolo,
       status: denuncia.status,
       tipoManifestacao: denuncia.tipoManifestacao,
+      // Comentário único da época antes do histórico existir
       comentarioRH: denuncia.comentarioRH || null,
+      historico: historico.map(historicoParaDenunciante),
+      quantidadeProvas: Number(denuncia.anexosCount || 0),
       createdAt: denuncia.createdAt,
       updatedAt: denuncia.updatedAt
     });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao consultar denúncia' });
+  }
+});
+
+// Histórico da denúncia (admin)
+router.get('/:id/historico', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const snap = await docRef('denuncias', req.params.id).get();
+    if (!snap.exists || (await usuarioEhDenunciado(req.user!.id, snap.data() as any))) {
+      return res.status(404).json({ error: 'Denúncia não encontrada' });
+    }
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ data: (await listarHistorico(req.params.id)).map(historicoParaRH) });
+  } catch (error) {
+    console.error('Erro ao obter histórico:', error);
+    res.status(500).json({ error: 'Erro ao obter histórico' });
+  }
+});
+
+// Comentário do RH para o denunciante (admin) — entra no histórico, sem apagar os anteriores
+const comentarioSchema = z.object({
+  texto: z.string().trim().min(1, 'Escreva o comentário').max(MAX_CARACTERES_COMENTARIO, `O comentário pode ter no máximo ${MAX_CARACTERES_COMENTARIO} caracteres`)
+});
+
+router.post('/:id/comentarios', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { texto } = comentarioSchema.parse(req.body);
+    const ref = docRef('denuncias', req.params.id);
+    const snap = await ref.get();
+    if (!snap.exists || (await usuarioEhDenunciado(req.user!.id, snap.data() as any))) {
+      return res.status(404).json({ error: 'Denúncia não encontrada' });
+    }
+    const item = await registrarNoHistorico(req.params.id, { tipo: 'COMENTARIO', texto, autorUserId: req.user!.id });
+    await ref.set({ updatedAt: item.createdAt }, { merge: true });
+    res.status(201).json(historicoParaRH(item));
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: error.errors[0].message });
+    }
+    console.error('Erro ao registrar comentário:', error);
+    res.status(500).json({ error: 'Erro ao registrar comentário' });
   }
 });
 
@@ -299,7 +394,7 @@ router.get('/:id', authenticateToken, requireAdmin, async (req: AuthRequest, res
     const denunciaSnap = await docRef('denuncias', req.params.id).get();
     const denuncia = snapData<any>(denunciaSnap as any);
 
-    if (!denuncia) {
+    if (!denuncia || (await usuarioEhDenunciado(req.user!.id, denuncia))) {
       return res.status(404).json({ error: 'Denúncia não encontrada' });
     }
 

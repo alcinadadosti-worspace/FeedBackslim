@@ -111,15 +111,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isAuthenticated: true,
         isLoading: false,
       });
-    } catch (error) {
-      localStorage.removeItem('ouvidoria_token');
-      localStorage.removeItem('ouvidoria_user');
-      set({
-        user: null,
-        token: null,
-        isAuthenticated: false,
-        isLoading: false,
-      });
+    } catch (error: any) {
+      // Só encerra a sessão quando o servidor recusa o login. Em falha de rede ou servidor
+      // fora do ar por instantes (ex.: reiniciando), mantém o usuário salvo.
+      const status = error?.response?.status;
+      if (status === 401 || status === 403 || status === 404) {
+        localStorage.removeItem('ouvidoria_token');
+        localStorage.removeItem('ouvidoria_user');
+        set({
+          user: null,
+          token: null,
+          isAuthenticated: false,
+          isLoading: false,
+        });
+        return;
+      }
+      console.error('Não foi possível confirmar a sessão agora:', error);
+      set({ isLoading: false });
     }
   },
 

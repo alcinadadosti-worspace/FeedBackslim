@@ -25,7 +25,9 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Senha errada no login também volta 401: aí só mostra o erro, sem recarregar a página
+    const ehTentativaDeLogin = String(error.config?.url || '').includes('/auth/login');
+    if (error.response?.status === 401 && !ehTentativaDeLogin) {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('ouvidoria_token');
         localStorage.removeItem('ouvidoria_user');
@@ -75,13 +77,64 @@ export const avaliacoesAPI = {
 
 // Denúncias endpoints
 export const denunciasAPI = {
-  list: (params?: { gestorId?: string; status?: string; tipo?: string; page?: number }) =>
+  list: (params?: { gestorId?: string; status?: string; tipo?: string; page?: number; limit?: number }) =>
     api.get('/denuncias', { params }),
+  getById: (id: string) => api.get(`/denuncias/${id}`),
   create: (data: any) => api.post('/denuncias', data),
   updateStatus: (id: string, status: string, comentarioRH?: string) =>
     api.patch(`/denuncias/${id}/status`, { status, comentarioRH }),
   stats: () => api.get('/denuncias/stats'),
   consultar: (codigo: string) => api.get(`/denuncias/consultar/${codigo}`),
+};
+
+// Histórico e provas da denúncia
+export interface ItemHistoricoDenuncia {
+  id: string;
+  tipo: 'COMENTARIO' | 'STATUS';
+  texto: string;
+  autorNome?: string | null; // só vem para o RH
+  createdAt: string;
+}
+
+export interface ProvaDenuncia {
+  id: string;
+  nome: string;
+  mimeType: string;
+  tamanho: number;
+  categoria: 'IMAGEM' | 'VIDEO';
+  createdAt?: string;
+}
+
+// Lado do RH: usa o login do admin
+export const denunciaAndamentoAPI = {
+  historico: (denunciaId: string) =>
+    api.get<{ data: ItemHistoricoDenuncia[] }>(`/denuncias/${denunciaId}/historico`),
+  comentar: (denunciaId: string, texto: string) =>
+    api.post<ItemHistoricoDenuncia>(`/denuncias/${denunciaId}/comentarios`, { texto }),
+  provas: (denunciaId: string) =>
+    api.get<{ data: ProvaDenuncia[] }>(`/denuncias/${denunciaId}/anexos`),
+  baixarProva: (denunciaId: string, anexoId: string) =>
+    api.get<Blob>(`/denuncias/${denunciaId}/anexos/${anexoId}`, { responseType: 'blob' }),
+};
+
+// Envio de provas pelo denunciante logo após registrar a denúncia. Instância separada:
+// sem o login de usuário e sem redirecionar para /login. O acesso é pelo token que
+// vem na resposta da criação da denúncia (vale por 1 hora).
+const provasPublicoApi = axios.create({ baseURL: API_URL });
+
+export const provasDenunciaAPI = {
+  enviar: (tokenAnexos: string, arquivo: File, onProgress?: (percentual: number) => void) => {
+    const form = new FormData();
+    form.append('arquivo', arquivo);
+    return provasPublicoApi.post('/denuncias/anexos', form, {
+      headers: { Authorization: `Bearer ${tokenAnexos}` },
+      onUploadProgress: onProgress
+        ? (e) => {
+            if (e.total) onProgress(Math.round((e.loaded / e.total) * 100));
+          }
+        : undefined,
+    });
+  },
 };
 
 // Dashboard endpoints

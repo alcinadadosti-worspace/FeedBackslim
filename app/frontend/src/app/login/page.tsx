@@ -19,13 +19,19 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Só aceita destinos dentro do próprio site. Comparar a origem depois de montar a URL
+  // barra truques como "/\site.com" ou "/%09/site.com", que o navegador trata como externos.
   const getNextPath = () => {
     const next = searchParams.get('next');
-    if (!next) return null;
-    if (!next.startsWith('/')) return null;
-    if (next.startsWith('//')) return null;
-    if (next.startsWith('/login')) return null;
-    return next;
+    if (!next || !next.startsWith('/')) return null;
+    try {
+      const destino = new URL(next, window.location.origin);
+      if (destino.origin !== window.location.origin) return null;
+      if (destino.pathname.startsWith('/login')) return null;
+      return destino.pathname + destino.search + destino.hash;
+    } catch {
+      return null;
+    }
   };
 
   useEffect(() => {

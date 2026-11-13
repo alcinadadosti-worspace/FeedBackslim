@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Search, Clock, CheckCircle, Archive, AlertTriangle, MessageSquare } from 'lucide-react';
+import { Search, Clock, CheckCircle, Archive, History, Paperclip } from 'lucide-react';
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { Card, CardTitle, CardContent } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { HistoricoDenuncia } from '@/components/denuncia/HistoricoDenuncia';
 import { denunciasAPI } from '@/lib/api';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -86,7 +87,7 @@ export default function ConsultarDenunciaPage() {
             <h1 className="text-xl sm:text-3xl font-display font-bold text-neutral-900 dark:text-neutral-100">Consultar Denúncia</h1>
           </div>
           <p className="text-neutral-600 dark:text-neutral-300">
-            Digite o código de protocolo recebido ao registrar sua denúncia para consultar o andamento.
+            Digite o código de protocolo recebido ao registrar sua denúncia para consultar o andamento e os comentários do RH.
           </p>
         </div>
 
@@ -159,22 +160,25 @@ export default function ConsultarDenunciaPage() {
                 )}
               </div>
 
-              {/* Comentário do RH */}
-              {resultado.comentarioRH ? (
-                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800">
-                  <div className="flex items-center gap-2 mb-2">
-                    <MessageSquare className="w-4 h-4 text-blue-600" />
-                    <p className="text-sm font-bold text-blue-800 dark:text-blue-300">Comentário do RH</p>
-                  </div>
-                  <p className="text-sm text-neutral-700 dark:text-neutral-300">{resultado.comentarioRH}</p>
-                </div>
-              ) : (
-                <div className="p-4 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 text-center">
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                    Nenhum comentário do RH ainda. Acompanhe as atualizações pelo código de protocolo.
-                  </p>
-                </div>
+              {resultado.quantidadeProvas > 0 && (
+                <p className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-300">
+                  <Paperclip className="w-4 h-4" />
+                  {resultado.quantidadeProvas === 1 ? '1 prova enviada' : `${resultado.quantidadeProvas} provas enviadas`} junto com a denúncia.
+                </p>
               )}
+
+              {/* Histórico: comentários do RH e mudanças de status */}
+              <div>
+                <p className="flex items-center gap-2 text-sm font-bold text-neutral-800 dark:text-neutral-100 mb-3">
+                  <History className="w-4 h-4" />
+                  Histórico
+                </p>
+                <HistoricoDenuncia
+                  itens={resultado.historico || []}
+                  comentarioAntigo={resultado.comentarioRH}
+                  vazio="Nenhum comentário do RH ainda. Acompanhe as atualizações pelo código de protocolo."
+                />
+              </div>
 
               <div className="pt-2 text-center">
                 <p className="text-xs text-neutral-400 dark:text-neutral-500">

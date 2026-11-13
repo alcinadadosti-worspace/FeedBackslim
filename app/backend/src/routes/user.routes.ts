@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { authenticateToken, AuthRequest, requireAdmin } from '../middleware/auth.middleware';
+import { authenticateToken, AuthRequest, requireAdmin, invalidarCacheUsuario } from '../middleware/auth.middleware';
 import { Role } from '../models';
 import { col, docRef, normalizeFirestoreData, snapData } from '../firestoreRepo';
 import { firestore } from '../firebase';
@@ -12,6 +12,20 @@ const updateUserSchema = z.object({
   nome: z.string().min(2).optional(),
   avatar: z.string().optional()
 });
+
+function emGrupos<T>(lista: T[], tamanho = 10): T[][] {
+  const grupos: T[][] = [];
+  for (let i = 0; i < lista.length; i += tamanho) grupos.push(lista.slice(i, i + tamanho));
+  return grupos;
+}
+
+async function deleteDocsByIn(colecao: string, campo: string, valores: string[]) {
+  let total = 0;
+  for (const grupo of emGrupos(valores)) {
+    total += await deleteDocsByQuery(col(colecao).where(campo, 'in', grupo));
+  }
+  return total;
+}
 
 async function deleteDocsByQuery(query: Query) {
   const snap = await query.get();
@@ -75,19 +89,16 @@ router.post('/cleanup-test-users', authenticateToken, requireAdmin, async (req: 
     const userDocs = usersSnap.docs.map((d) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
     const userIds = userDocs.map((u: any) => u.id);
 
-    const gestoresSnap = await col('gestores').where('userId', 'in', userIds.slice(0, 10)).get();
-    const gestorDocs = gestoresSnap.docs.map((d) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
+    const gestorDocs: any[] = [];
+    for (const grupo of emGrupos(userIds)) {
+      const gestoresSnap = await col('gestores').where('userId', 'in', grupo).get();
+      gestorDocs.push(...gestoresSnap.docs.map((d) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) })));
+    }
     const gestorIds = gestorDocs.map((g: any) => g.id);
 
-    const deletedBadges = gestorIds.length
-      ? await deleteDocsByQuery(col('badges').where('gestorId', 'in', gestorIds.slice(0, 10)))
-      : 0;
-    const deletedAvaliacoes = gestorIds.length
-      ? await deleteDocsByQuery(col('avaliacoes').where('gestorId', 'in', gestorIds.slice(0, 10)))
-      : 0;
-    const deletedDenuncias = gestorIds.length
-      ? await deleteDocsByQuery(col('denuncias').where('gestorId', 'in', gestorIds.slice(0, 10)))
-      : 0;
+    const deletedBadges = await deleteDocsByIn('badges', 'gestorId', gestorIds);
+    const deletedAvaliacoes = await deleteDocsByIn('avaliacoes', 'gestorId', gestorIds);
+    const deletedDenuncias = await deleteDocsByIn('denuncias', 'gestorId', gestorIds);
 
     let batch = firestore.batch();
     let count = 0;
@@ -115,6 +126,7 @@ router.post('/cleanup-test-users', authenticateToken, requireAdmin, async (req: 
     if (count > 0) {
       await batch.commit();
     }
+    userIds.forEach(invalidarCacheUsuario);
 
     res.json({
       deletedUsers: userDocs.length,
@@ -129,9 +141,13 @@ router.post('/cleanup-test-users', authenticateToken, requireAdmin, async (req: 
   }
 });
 
-// Obter usuário por ID
+// Obter usuário por ID (o próprio usuário ou admin)
 router.get('/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
+    if (req.user!.id !== req.params.id && req.user!.role !== Role.RH_ADMIN) {
+      return res.status(403).json({ error: 'Acesso não autorizado' });
+    }
+
     const userSnap = await docRef('users', req.params.id).get();
     const user = snapData<any>(userSnap as any);
 
@@ -168,6 +184,7 @@ router.patch('/:id/role', authenticateToken, requireAdmin, async (req: AuthReque
     }
 
     await docRef('users', id).set({ role, updatedAt: new Date() }, { merge: true });
+    invalidarCacheUsuario(id); // o novo papel vale na hora, sem esperar o cache de 60s
     res.json({ id, role });
   } catch (error) {
     if (error instanceof z.ZodError) {

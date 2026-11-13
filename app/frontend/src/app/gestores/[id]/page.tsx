@@ -51,9 +51,9 @@ export default function GestorPerfilPage() {
     );
   }
 
-  const elogios = gestor.avaliacoes?.filter((a: any) => a.elogio) || [];
-  const sugestoes = gestor.avaliacoes?.filter((a: any) => a.sugestao) || [];
-  const criticas = gestor.avaliacoes?.filter((a: any) => a.critica) || [];
+  const totalElogios = gestor.elogiosCount ?? (gestor.avaliacoes?.filter((a: any) => a.elogio).length || 0);
+  const totalSugestoes = gestor.sugestoesCount ?? (gestor.avaliacoes?.filter((a: any) => a.sugestao).length || 0);
+  const totalCriticas = gestor.criticasCount ?? (gestor.avaliacoes?.filter((a: any) => a.critica).length || 0);
 
   return (
     <SmartLayout>
@@ -98,7 +98,7 @@ export default function GestorPerfilPage() {
                 <div className="flex items-center justify-center gap-1 sm:gap-2">
                   <Star className="w-6 h-6 sm:w-8 sm:h-8 text-gold-400 fill-gold-400" />
                   <span className="text-2xl sm:text-4xl font-bold text-neutral-900 dark:text-neutral-100">
-                    {gestor.mediaAvaliacao.toFixed(1)}
+                    {Number(gestor.mediaAvaliacao ?? 0).toFixed(1)}
                   </span>
                 </div>
                 <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-1">
@@ -122,7 +122,7 @@ export default function GestorPerfilPage() {
             <div className="flex items-center gap-2 sm:gap-3">
               <ThumbsUp className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 shrink-0" />
               <div>
-                <p className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-100">{elogios.length}</p>
+                <p className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-100">{totalElogios}</p>
                 <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-300">Elogios</p>
               </div>
             </div>
@@ -132,7 +132,7 @@ export default function GestorPerfilPage() {
             <div className="flex items-center gap-2 sm:gap-3">
               <Lightbulb className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 shrink-0" />
               <div>
-                <p className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-100">{sugestoes.length}</p>
+                <p className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-100">{totalSugestoes}</p>
                 <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-300">Sugestões</p>
               </div>
             </div>
@@ -142,7 +142,7 @@ export default function GestorPerfilPage() {
             <div className="flex items-center gap-2 sm:gap-3">
               <AlertCircle className="w-6 h-6 sm:w-8 sm:h-8 text-orange-600 shrink-0" />
               <div>
-                <p className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-100">{criticas.length}</p>
+                <p className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-100">{totalCriticas}</p>
                 <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-300">Críticas</p>
               </div>
             </div>
@@ -161,10 +161,10 @@ export default function GestorPerfilPage() {
                 <div key={avaliacao.id} className="p-3 sm:p-4 border-2 border-neutral-200 dark:border-neutral-700">
                   <div className="flex items-start sm:items-center justify-between mb-2 sm:mb-3 gap-2">
                     <div className="flex items-center gap-2 sm:gap-3">
-                      <Avatar src={null} alt={avaliacao.autor?.nome} size="sm" />
+                      <Avatar src={null} alt="Anônimo" size="sm" />
                       <div>
                         <p className="font-semibold text-sm text-neutral-900 dark:text-neutral-100">
-                          {avaliacao.autor?.nome || 'Colaborador'}
+                          Anônimo
                         </p>
                         <p className="text-xs text-neutral-500 dark:text-neutral-400">
                           {format(new Date(avaliacao.createdAt), "dd/MM/yyyy", { locale: ptBR })}

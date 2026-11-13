@@ -2,9 +2,44 @@ import { Router, Response } from 'express';
 import { authenticateToken, AuthRequest, requireAdmin } from '../middleware/auth.middleware';
 import { Role, StatusDenuncia } from '../models';
 import { col, docRef, getManyByIds, normalizeFirestoreData, snapData } from '../firestoreRepo';
+import { semDenunciasContraOUsuario } from '../services/conflitoInteresse';
 import ExcelJS from 'exceljs';
 
 const router = Router();
+
+// Avaliações são anônimas: o autorId fica guardado só para o próprio autor ver as suas
+// em /dashboard/colaborador, e nunca é devolvido para gestores ou admins.
+function semAutor<T extends Record<string, any>>(avaliacao: T): Omit<T, 'autorId'> {
+  const { autorId, ...resto } = avaliacao;
+  return resto;
+}
+
+// Mês (AAAA-MM) no fuso de Brasília, para não jogar avaliações da noite do último dia no mês seguinte
+const formatoMes = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit' });
+function mesEmBrasilia(data: Date): string {
+  const partes = formatoMes.formatToParts(data);
+  const ano = partes.find((p) => p.type === 'year')?.value;
+  const mes = partes.find((p) => p.type === 'month')?.value;
+  return `${ano}-${mes}`;
+}
+
+// Campo de CSV com aspas e quebras de linha escapadas (RFC 4180)
+function campoCsv(valor: unknown): string {
+  if (valor === null || valor === undefined) return '';
+  const texto = valor instanceof Date ? valor.toISOString() : String(valor);
+  return /[",\r\n;]/.test(texto) ? `"${texto.replace(/"/g, '""')}"` : texto;
+}
+
+// Todas as colunas que aparecem em qualquer linha (nem todo documento tem os mesmos campos)
+function colunasDe(linhas: any[]): string[] {
+  const colunas = new Set<string>();
+  for (const linha of linhas) {
+    for (const [chave, valor] of Object.entries(linha)) {
+      if (valor === null || typeof valor !== 'object' || valor instanceof Date) colunas.add(chave);
+    }
+  }
+  return Array.from(colunas);
+}
 
 // Dashboard do colaborador
 router.get('/colaborador', authenticateToken, async (req: AuthRequest, res: Response) => {
@@ -65,7 +100,7 @@ router.get('/colaborador', authenticateToken, async (req: AuthRequest, res: Resp
       stats: {
         totalGestores,
         totalAvaliacoes,
-        minhasContribuicoes: minhasAvaliacoes.length
+        minhasContribuicoes: minhasSnap.size
       }
     });
   } catch (error) {
@@ -98,16 +133,11 @@ router.get('/gestor', authenticateToken, async (req: AuthRequest, res: Response)
       .sort((a: any, b: any) => (b.createdAt as Date).getTime() - (a.createdAt as Date).getTime())
       .slice(0, 10);
 
-    const autorIds = recentesRaw.map((a: any) => a.autorId).filter(Boolean);
-    const autoresById = await getManyByIds<any>('users', autorIds);
-    const avaliacoesRecentes = recentesRaw.map((a: any) => ({
-      ...a,
-      autor: a.autorId ? { nome: (autoresById[a.autorId] as any)?.nome } : null
-    }));
+    const avaliacoesRecentes = recentesRaw.map(semAutor);
 
     // Calcular evolução mensal
     const evolucaoMensal = todasAvaliacoes.reduce((acc: any, av: any) => {
-      const mes = (av.createdAt as Date).toISOString().slice(0, 7);
+      const mes = mesEmBrasilia(av.createdAt as Date);
       if (!acc[mes]) {
         acc[mes] = { total: 0, soma: 0, elogios: 0, sugestoes: 0, criticas: 0 };
       }
@@ -119,7 +149,9 @@ router.get('/gestor', authenticateToken, async (req: AuthRequest, res: Response)
       return acc;
     }, {} as Record<string, { total: number; soma: number; elogios: number; sugestoes: number; criticas: number }>);
 
-    const evolucao = (Object.entries(evolucaoMensal) as Array<[string, { total: number; soma: number; elogios: number; sugestoes: number; criticas: number }]>).map(([mes, data]) => ({
+    const evolucao = (Object.entries(evolucaoMensal) as Array<[string, { total: number; soma: number; elogios: number; sugestoes: number; criticas: number }]>)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([mes, data]) => ({
       mes,
       media: Number((data.soma / data.total).toFixed(1)),
       total: data.total,
@@ -182,7 +214,8 @@ router.get('/admin', authenticateToken, requireAdmin, async (req: AuthRequest, r
       (fromDate ? col('avaliacoes').where('createdAt', '>=', fromDate).get() : col('avaliacoes').get()),
       denunciasBase.count().get().then((s: any) => s.data().count),
       col('denuncias').where('status', '==', StatusDenuncia.PENDENTE).count().get().then((s: any) => s.data().count),
-      col('feedbacksColaborador').count().get().then((s: any) => s.data().count)
+      (fromDate ? col('feedbacksColaborador').where('createdAt', '>=', fromDate) : col('feedbacksColaborador'))
+        .count().get().then((s: any) => s.data().count)
     ]);
 
     const totalAvaliacoes = avaliacoesSnap.size;
@@ -208,8 +241,14 @@ router.get('/admin', authenticateToken, requireAdmin, async (req: AuthRequest, r
       .sort((a: any, b: any) => (b.mediaAvaliacao ?? 0) - (a.mediaAvaliacao ?? 0))
       .slice(0, 10);
 
-    // Denúncias all
-    const denunciasAll = denunciasAllSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
+    // Denúncias do período escolhido (todas, se não houver período)
+    // (sem as denúncias contra o próprio admin que está vendo o painel)
+    const denunciasAll = await semDenunciasContraOUsuario(
+      req.user!.id,
+      denunciasAllSnap.docs
+        .map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }))
+        .filter((d: any) => !fromDate || (d.createdAt instanceof Date && d.createdAt >= fromDate))
+    );
     // Agrupar por pessoa denunciada: gestor (gestorId) ou colaborador (colaboradorSlackId)
     type Denunciado = { gestorId: string | null; colaboradorSlackId: string | null; colaboradorNome: string | null; total: number };
     const denunciadosByKey = denunciasAll.reduce<Record<string, Denunciado>>((acc: Record<string, Denunciado>, d: any) => {
@@ -259,12 +298,11 @@ router.get('/admin', authenticateToken, requireAdmin, async (req: AuthRequest, r
     // Buscar users dos gestores de denúncias, avaliações e denúncias recentes em paralelo
     const denunciadosUserIds = Object.values(denunciadosGestoresById).map((g: any) => (g as any).userId).filter(Boolean);
     const avalGestorUserIds = Object.values(avalGestoresById).map((g: any) => (g as any).userId).filter(Boolean);
-    const avalAutorIds = avaliacoesRecentesRaw.map((a: any) => a.autorId).filter(Boolean);
     const denRecUserIds = Object.values(denRecGestoresById).map((g: any) => (g as any).userId).filter(Boolean);
 
     const [denunciadosUsersById, avalUsersById, denRecUsersById] = await Promise.all([
       getManyByIds<any>('users', denunciadosUserIds),
-      getManyByIds<any>('users', [...new Set([...avalAutorIds, ...avalGestorUserIds])]),
+      getManyByIds<any>('users', [...new Set(avalGestorUserIds)]),
       getManyByIds<any>('users', denRecUserIds)
     ]);
 
@@ -294,11 +332,9 @@ router.get('/admin', authenticateToken, requireAdmin, async (req: AuthRequest, r
     const avaliacoesRecentes = avaliacoesRecentesRaw.map((a: any) => {
       const gestor = avalGestoresById[a.gestorId];
       const gestorUser = gestor ? avalUsersById[(gestor as any).userId] : undefined;
-      const autor = a.autorId ? avalUsersById[a.autorId] : undefined;
       return {
-        ...a,
-        gestor: gestor ? { ...(gestor as any), user: gestorUser ? { nome: (gestorUser as any).nome } : null } : null,
-        autor: autor ? { nome: (autor as any).nome } : null
+        ...semAutor(a),
+        gestor: gestor ? { ...(gestor as any), user: gestorUser ? { nome: (gestorUser as any).nome } : null } : null
       };
     });
 
@@ -357,7 +393,10 @@ router.get('/export', authenticateToken, requireAdmin, async (req: AuthRequest, 
               gestorNome: (gestorUser as any)?.nome || '',
               nota: a.nota ?? null,
               elogio: a.elogio ?? '',
-              publica: a.publica ?? null
+              sugestao: a.sugestao ?? '',
+              critica: a.critica ?? '',
+              publica: a.publica ?? null,
+              createdAt: a.createdAt ?? ''
             };
           });
           filename = 'avaliacoes_export';
@@ -367,7 +406,10 @@ router.get('/export', authenticateToken, requireAdmin, async (req: AuthRequest, 
       case 'denuncias':
         {
           const snap = await col('denuncias').get();
-          const denuncias = snap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
+          const denuncias = await semDenunciasContraOUsuario(
+            req.user!.id,
+            snap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }))
+          );
           const gestorIds = denuncias.map((d: any) => d.gestorId).filter(Boolean);
           const gestoresById = await getManyByIds<any>('gestores', gestorIds);
           const gestorUserIds = Object.values(gestoresById).map((g: any) => (g as any).userId).filter(Boolean);
@@ -428,15 +470,15 @@ router.get('/export', authenticateToken, requireAdmin, async (req: AuthRequest, 
       if (data.length === 0) {
         return res.status(200).send('');
       }
-      const headers = Object.keys(data[0]).filter(k => typeof data[0][k] !== 'object');
+      const headers = colunasDe(data);
       const csv = [
-        headers.join(','),
-        ...data.map((item: any) => headers.map(h => JSON.stringify(item[h] ?? '')).join(','))
-      ].join('\n');
+        headers.map(campoCsv).join(','),
+        ...data.map((item: any) => headers.map((h) => campoCsv(item[h])).join(','))
+      ].join('\r\n');
 
-      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename=${tipo}_export.csv`);
-      return res.send(csv);
+      return res.send('\uFEFF' + csv); // BOM para o Excel abrir os acentos corretamente
     }
 
     if (formato === 'xlsx') {
@@ -444,7 +486,7 @@ router.get('/export', authenticateToken, requireAdmin, async (req: AuthRequest, 
       const worksheet = workbook.addWorksheet(sheetName);
 
       if (data.length > 0) {
-        const keys = Object.keys(data[0]);
+        const keys = colunasDe(data);
         worksheet.columns = keys.map((key) => ({
           header: key,
           key,

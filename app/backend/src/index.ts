@@ -1,6 +1,7 @@
+// Carrega o .env antes de qualquer módulo que leia process.env na importação (firebase, slack)
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import path from 'path';
 
 import authRoutes from './routes/auth.routes';
@@ -12,8 +13,6 @@ import dashboardRoutes from './routes/dashboard.routes';
 import uploadRoutes from './routes/upload.routes';
 import colaboradorRoutes from './routes/colaborador.routes';
 import feedbackColaboradorRoutes from './routes/feedbackColaborador.routes';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;

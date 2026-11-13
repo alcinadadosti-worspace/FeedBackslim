@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 import {
   Users, Star, AlertTriangle, Download, ArrowRight,
   BarChart3, MessageSquare, Clock,
@@ -15,6 +17,7 @@ import { Badge } from '@/components/ui/Badge';
 import { SimpleRating } from '@/components/ui/Rating';
 import { Loading } from '@/components/ui/Loading';
 import { dashboardAPI } from '@/lib/api';
+import { useAuthStore } from '@/store/auth';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
@@ -22,22 +25,37 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recha
 const COLORS = ['#98d4a0', '#d4b896', '#f87171', '#60a5fa'];
 
 export default function AdminDashboardPage() {
+  const router = useRouter();
+  const { user } = useAuthStore();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [periodo, setPeriodo] = useState('30');
+  const ultimaBusca = useRef(0);
+
+  // Guarda de acesso: apenas RH_ADMIN (gestores e colaboradores voltam para o próprio painel)
+  useEffect(() => {
+    if (user && user.role !== 'RH_ADMIN') {
+      router.push('/dashboard');
+    }
+  }, [user, router]);
 
   useEffect(() => {
-    loadDashboard();
-  }, [periodo]);
+    if (user?.role === 'RH_ADMIN') loadDashboard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [periodo, user?.role]);
 
   const loadDashboard = async () => {
+    // Ao trocar o período rápido, ignora respostas de buscas antigas que cheguem depois
+    const busca = ++ultimaBusca.current;
+    setLoading(true);
     try {
       const response = await dashboardAPI.admin(Number(periodo));
-      setData(response.data);
+      if (busca === ultimaBusca.current) setData(response.data);
     } catch (error) {
       console.error('Erro ao carregar dashboard:', error);
+      if (busca === ultimaBusca.current) toast.error('Não foi possível carregar o painel. Tente novamente.');
     } finally {
-      setLoading(false);
+      if (busca === ultimaBusca.current) setLoading(false);
     }
   };
 
@@ -52,8 +70,10 @@ export default function AdminDashboardPage() {
       a.href = url;
       a.download = `${tipo}_export.xlsx`;
       a.click();
+      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
     } catch (error) {
       console.error('Erro ao exportar:', error);
+      toast.error('Não foi possível exportar. Tente novamente.');
     }
   };
 
@@ -70,6 +90,8 @@ export default function AdminDashboardPage() {
         value: count,
       }))
     : [];
+
+  if (user && user.role !== 'RH_ADMIN') return null;
 
   return (
     <MainLayout>

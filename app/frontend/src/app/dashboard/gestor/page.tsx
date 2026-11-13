@@ -14,6 +14,7 @@ import { avaliacoesAPI, dashboardAPI } from '@/lib/api';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useSearchParams } from 'next/navigation';
+import toast from 'react-hot-toast';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, BarChart, Bar,
@@ -61,8 +62,9 @@ export default function GestorDashboardPage() {
           ),
         };
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao atualizar visibilidade:', error);
+      toast.error(error?.response?.data?.error || 'Não foi possível alterar a visibilidade. Tente novamente.');
     } finally {
       setUpdatingPublic((prev) => ({ ...prev, [avaliacaoId]: false }));
     }
@@ -217,10 +219,10 @@ export default function GestorDashboardPage() {
                 <div key={avaliacao.id} id={`avaliacao-${avaliacao.id}`} className="p-3 sm:p-4 border-2 border-neutral-200 dark:border-neutral-700">
                   <div className="flex flex-wrap items-start sm:items-center justify-between mb-2 sm:mb-3 gap-2">
                     <div className="flex items-center gap-2 sm:gap-3">
-                      <Avatar src={null} alt={avaliacao.autor?.nome} size="sm" />
+                      <Avatar src={null} alt="Anônimo" size="sm" />
                       <div>
                         <p className="font-semibold text-sm text-neutral-900 dark:text-neutral-100">
-                          {avaliacao.autor?.nome || 'Colaborador'}
+                          Anônimo
                         </p>
                         <p className="text-xs text-neutral-500 dark:text-neutral-400">
                           {format(new Date(avaliacao.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}

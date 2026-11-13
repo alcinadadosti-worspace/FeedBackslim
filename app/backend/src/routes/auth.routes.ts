@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
-import { loginLimiter } from '../middleware/rateLimit.middleware';
+import { loginLimiter, registerLimiter } from '../middleware/rateLimit.middleware';
 import { authenticateToken, AuthRequest } from '../middleware/auth.middleware';
 import { Role } from '../models';
 import { col, docRef, normalizeFirestoreData, snapData } from '../firestoreRepo';
@@ -11,27 +11,37 @@ import { col, docRef, normalizeFirestoreData, snapData } from '../firestoreRepo'
 const router = Router();
 
 const registerSchema = z.object({
-  email: z.string().email('Email inválido'),
+  email: z.string().trim().toLowerCase().pipe(z.string().email('Email inválido')),
   password: z.string().min(5, 'Senha deve ter no mínimo 5 caracteres'),
   nome: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres'),
-  // RH_ADMIN nunca pode ser escolhido no cadastro público — só é concedido manualmente.
-  role: z.enum([Role.COLABORADOR, Role.GESTOR], {
-    errorMap: () => ({ message: 'Perfil inválido' })
+  // O cadastro público cria só COLABORADOR. Gestores e admins são criados pelo RH
+  // (perfil de gestor + papel), nunca pela própria pessoa.
+  role: z.literal(Role.COLABORADOR, {
+    errorMap: () => ({ message: 'Contas de gestor são criadas pelo RH. Cadastre-se como colaborador.' })
   }).optional()
 });
 
 const loginSchema = z.object({
-  email: z.string().email('Email inválido'),
+  email: z.string().trim().pipe(z.string().email('Email inválido')),
   password: z.string().min(1, 'Senha é obrigatória')
 });
 
+// Procura o e-mail como foi digitado e, se não achar, em minúsculas
+async function buscarUsuarioPorEmail(email: string): Promise<any | null> {
+  const tentativas = Array.from(new Set([email, email.toLowerCase()]));
+  for (const tentativa of tentativas) {
+    const snap = await col('users').where('email', '==', tentativa).limit(1).get();
+    if (!snap.empty) return snapData<any>(snap.docs[0] as any);
+  }
+  return null;
+}
+
 // Registro
-router.post('/register', async (req: Request, res: Response) => {
+router.post('/register', registerLimiter, async (req: Request, res: Response) => {
   try {
     const data = registerSchema.parse(req.body);
 
-    const existingSnap = await col('users').where('email', '==', data.email).limit(1).get();
-    if (!existingSnap.empty) {
+    if (await buscarUsuarioPorEmail(data.email)) {
       return res.status(400).json({ error: 'Email já cadastrado' });
     }
 
@@ -39,7 +49,7 @@ router.post('/register', async (req: Request, res: Response) => {
 
     const now = new Date();
     const userId = uuidv4();
-    const role = data.role || Role.COLABORADOR;
+    const role = Role.COLABORADOR;
     const userData = {
       id: userId,
       email: data.email,
@@ -59,27 +69,6 @@ router.post('/register', async (req: Request, res: Response) => {
       nome: data.nome,
       role
     };
-
-    // Se for gestor, criar perfil automaticamente
-    if (user.role === Role.GESTOR) {
-      const gestorId = uuidv4();
-      await docRef('gestores', gestorId).set({
-        id: gestorId,
-        userId: userId,
-        cargo: 'Gestor',
-        departamento: null,
-        foto: null,
-        bio: null,
-        slackUserId: null,
-        mediaAvaliacao: 0,
-        totalAvaliacoes: 0,
-        elogiosCount: 0,
-        sugestoesCount: 0,
-        criticasCount: 0,
-        createdAt: now,
-        updatedAt: now
-      });
-    }
 
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
@@ -102,9 +91,7 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
   try {
     const data = loginSchema.parse(req.body);
 
-    const userQuery = await col('users').where('email', '==', data.email).limit(1).get();
-    const userSnap = userQuery.docs[0];
-    const user = userSnap ? snapData<any>(userSnap as any) : null;
+    const user = await buscarUsuarioPorEmail(data.email);
 
     if (!user) {
       return res.status(401).json({ error: 'Credenciais inválidas' });

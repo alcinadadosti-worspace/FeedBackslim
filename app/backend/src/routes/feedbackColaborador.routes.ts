@@ -2,10 +2,10 @@ import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import crypto from 'crypto';
-import { avaliacaoLimiter } from '../middleware/rateLimit.middleware';
+import { feedbackColaboradorLimiter } from '../middleware/rateLimit.middleware';
 import { col, docRef, normalizeFirestoreData, snapData } from '../firestoreRepo';
 import { sendCollaboratorFeedbackNotification } from '../services/slack.service';
-import { findColaboradorBySlackId } from '../colaboradorRepo';
+import { findColaboradorBySlackId, listColaboradores } from '../colaboradorRepo';
 
 const router = Router();
 
@@ -37,7 +37,7 @@ const createFeedbackSchema = z.object({
 });
 
 // Criar feedback para colaborador (anônimo)
-router.post('/', avaliacaoLimiter, async (req: Request, res: Response) => {
+router.post('/', feedbackColaboradorLimiter, async (req: Request, res: Response) => {
   try {
     const data = createFeedbackSchema.parse(req.body);
 
@@ -66,19 +66,17 @@ router.post('/', avaliacaoLimiter, async (req: Request, res: Response) => {
     });
 
     const comentario = data.elogio || data.sugestao || data.critica || '';
-    try {
-      await sendCollaboratorFeedbackNotification({
-        slackUserId: data.colaboradorSlackId,
-        colaboradorNome: colaborador.nome,
-        nota: data.nota,
-        comentario,
-        feedbackId,
-        urlPublico: buildAceitarUrl(feedbackId, true),
-        urlPrivado: buildAceitarUrl(feedbackId, false)
-      });
-    } catch (slackError) {
+    sendCollaboratorFeedbackNotification({
+      slackUserId: data.colaboradorSlackId,
+      colaboradorNome: colaborador.nome,
+      nota: data.nota,
+      comentario,
+      feedbackId,
+      urlPublico: buildAceitarUrl(feedbackId, true),
+      urlPrivado: buildAceitarUrl(feedbackId, false)
+    }).catch((slackError) => {
       console.error('Erro ao enviar notificação Slack para colaborador:', slackError);
-    }
+    });
 
     res.status(201).json({
       id: feedbackId,
@@ -148,15 +146,16 @@ router.get('/:id/aceitar', async (req: Request, res: Response) => {
 router.get('/ranking', async (req: Request, res: Response) => {
   try {
     res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
-    const snap = await col('feedbacksColaborador').get();
+    const [snap, colaboradores] = await Promise.all([col('feedbacksColaborador').get(), listColaboradores()]);
     const feedbacks = snap.docs.map((d: any) => normalizeFirestoreData(d.data()) as any);
+    const nomeAtual = new Map(colaboradores.map((c) => [c.slackId, c.nome]));
 
     const byColaborador: Record<string, { nome: string; total: number; soma: number }> = {};
     for (const f of feedbacks) {
       const slackId = f.colaboradorSlackId;
-      if (!slackId) continue;
+      if (!slackId || !nomeAtual.has(slackId)) continue;
       if (!byColaborador[slackId]) {
-        byColaborador[slackId] = { nome: f.colaboradorNome, total: 0, soma: 0 };
+        byColaborador[slackId] = { nome: nomeAtual.get(slackId) || f.colaboradorNome, total: 0, soma: 0 };
       }
       byColaborador[slackId].total++;
       byColaborador[slackId].soma += Number(f.nota || 0);

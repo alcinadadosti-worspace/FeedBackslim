@@ -8,6 +8,12 @@ import { firestore } from '../firebase';
 
 const router = Router();
 
+// As rotas públicas (sem login) não devolvem e-mail, userId nem Slack ID do gestor
+function gestorPublico<T extends Record<string, any>>(gestor: T): Omit<T, 'userId' | 'slackUserId'> {
+  const { userId, slackUserId, ...resto } = gestor;
+  return resto;
+}
+
 const updateGestorSchema = z.object({
   cargo: z.string().min(2).optional(),
   departamento: z.string().optional(),
@@ -138,10 +144,8 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     const response = gestores.map((g: any) => {
       const user = usersById[g.userId];
       return {
-        ...g,
-        user: user
-          ? { id: user.id, nome: (user as any).nome, email: (user as any).email }
-          : null,
+        ...gestorPublico(g),
+        user: user ? { nome: (user as any).nome } : null,
         badges: badgesByGestorId[g.id] || [],
         _count: { avaliacoes: g.totalAvaliacoes ?? 0 }
       };
@@ -183,7 +187,7 @@ router.get('/ranking', async (req: AuthRequest, res: Response) => {
     const response = gestores.map((g: any) => {
       const user = usersById[g.userId];
       return {
-        ...g,
+        ...gestorPublico(g),
         user: user ? { nome: (user as any).nome } : null,
         badges: badgesByGestorId[g.id] || []
       };
@@ -216,22 +220,15 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
 
     const avaliacoes = avaliacoesSnap.docs
       .map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }))
-      .filter((a: any) => a.publica !== false)
+      .filter((a: any) => a.publica === true)
       .sort((a: any, b: any) => (b.createdAt as Date).getTime() - (a.createdAt as Date).getTime())
-      .slice(0, 20);
-
-    const autorIds = avaliacoes.map((a: any) => a.autorId).filter(Boolean);
-    const autoresById = await getManyByIds<any>('users', autorIds);
-
-    const avaliacoesComAutor = avaliacoes.map((a: any) => ({
-      ...a,
-      autor: a.autorId ? { nome: (autoresById[a.autorId] as any)?.nome } : null
-    }));
+      .slice(0, 20)
+      .map(({ autorId, ...resto }: any) => resto);
 
     res.json({
-      ...gestor,
-      user: user ? { id: user.id, nome: user.nome, email: user.email } : null,
-      avaliacoes: avaliacoesComAutor,
+      ...gestorPublico(gestor),
+      user: user ? { nome: user.nome } : null,
+      avaliacoes,
       badges
     });
   } catch (error) {

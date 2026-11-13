@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
-import { authenticateToken, optionalAuthenticateToken, AuthRequest } from '../middleware/auth.middleware';
+import { authenticateToken, optionalAuthenticateToken, AuthRequest, requireAdmin } from '../middleware/auth.middleware';
 import { avaliacaoLimiter } from '../middleware/rateLimit.middleware';
 import { sendEvaluationNotification } from '../services/slack.service';
 import { col, docRef, getManyByIds, normalizeFirestoreData, snapData } from '../firestoreRepo';
@@ -10,6 +10,13 @@ import { firestore } from '../firebase';
 import { Role } from '../models';
 
 const router = Router();
+
+// Avaliações são anônimas: o autorId fica guardado só para o próprio autor ver as suas
+// em /dashboard/colaborador, e nunca é devolvido em nenhuma outra resposta.
+function semAutor<T extends Record<string, any>>(avaliacao: T): Omit<T, 'autorId'> {
+  const { autorId, ...resto } = avaliacao;
+  return resto;
+}
 
 const createAvaliacaoSchema = z.object({
   gestorId: z.string().uuid('ID do gestor inválido'),
@@ -44,7 +51,7 @@ router.get('/publicas', async (req: AuthRequest, res: Response) => {
       const gestor = gestoresById[a.gestorId];
       const user = gestor ? usersById[(gestor as any).userId] : undefined;
       return {
-        ...a,
+        ...semAutor(a),
         gestor: gestor ? {
           id: (gestor as any).id,
           cargo: (gestor as any).cargo,
@@ -60,8 +67,8 @@ router.get('/publicas', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// Listar avaliações (admin pode ver todas)
-router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
+// Listar avaliações (somente admin)
+router.get('/', authenticateToken, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { gestorId, page = '1', limit = '20' } = req.query;
 
@@ -85,28 +92,25 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
         .limit(take)
         .get();
       avaliacoes = pagedSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
-      total = (await col('avaliacoes').get()).size;
+      total = (await col('avaliacoes').count().get()).data().count;
     }
 
     const gestorIds = avaliacoes.map((a: any) => a.gestorId).filter(Boolean);
-    const autorIds = avaliacoes.map((a: any) => a.autorId).filter(Boolean);
     const gestoresById = await getManyByIds<any>('gestores', gestorIds);
     const gestorUserIds = Object.values(gestoresById).map((g: any) => (g as any).userId).filter(Boolean);
-    const usersById = await getManyByIds<any>('users', [...autorIds, ...gestorUserIds]);
+    const usersById = await getManyByIds<any>('users', gestorUserIds);
 
     const data = avaliacoes.map((a: any) => {
       const gestor = gestoresById[a.gestorId];
       const gestorUser = gestor ? usersById[(gestor as any).userId] : undefined;
-      const autor = a.autorId ? usersById[a.autorId] : undefined;
       return {
-        ...a,
+        ...semAutor(a),
         gestor: gestor
           ? {
               ...(gestor as any),
               user: gestorUser ? { nome: (gestorUser as any).nome } : null
             }
-          : null,
-        autor: autor ? { nome: (autor as any).nome } : null
+          : null
       };
     });
 
@@ -179,25 +183,30 @@ router.post('/', avaliacaoLimiter, optionalAuthenticateToken, async (req: AuthRe
       });
     });
 
-    // Verificar e atribuir badges
-    await checkAndAssignBadges(data.gestorId);
-
-    // Enviar notificação Slack
-    const gestorUserSnap = await docRef('users', gestor.userId).get();
-    const gestorUser = snapData<any>(gestorUserSnap as any);
-    if (gestor.slackUserId && gestorUser) {
+    // A avaliação já está salva: badges e Slack rodam depois da resposta e, se falharem,
+    // não fazem o usuário achar que deu erro (e reenviar, duplicando a avaliação)
+    const aposSalvar = async () => {
       try {
-        await sendEvaluationNotification({
-          slackUserId: gestor.slackUserId,
-          gestorNome: gestorUser.nome,
-          nota: data.nota,
-          comentario: data.elogio || data.sugestao || data.critica || '',
-          avaliacaoId
-        });
+        await checkAndAssignBadges(data.gestorId);
+      } catch (badgeError) {
+        console.error('Erro ao atualizar badges:', badgeError);
+      }
+      try {
+        const gestorUser = snapData<any>((await docRef('users', gestor.userId).get()) as any);
+        if (gestor.slackUserId && gestorUser) {
+          await sendEvaluationNotification({
+            slackUserId: gestor.slackUserId,
+            gestorNome: gestorUser.nome,
+            nota: data.nota,
+            comentario: data.elogio || data.sugestao || data.critica || '',
+            avaliacaoId
+          });
+        }
       } catch (slackError) {
         console.error('Erro ao enviar notificação Slack:', slackError);
       }
-    }
+    };
+    void aposSalvar();
 
     res.status(201).json({
       id: avaliacaoId,
@@ -254,7 +263,7 @@ router.patch('/:id/publica', authenticateToken, async (req: AuthRequest, res: Re
 
     const updatedSnap = await docRef('avaliacoes', avaliacaoId).get();
     const updated = snapData<any>(updatedSnap as any);
-    res.json(updated);
+    res.json(updated ? semAutor(updated) : updated);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors[0].message });
@@ -281,7 +290,7 @@ async function checkAndAssignBadges(gestorId: string) {
 
   async function grant(tipo: BadgeType, descricao: string) {
     if (hasBadge(tipo)) return;
-    const id = uuidv4();
+    const id = `${gestorId}_${tipo}`;
     await docRef('badges', id).set({ id, gestorId, tipo, descricao, dataConquista: new Date() });
   }
 
@@ -318,7 +327,7 @@ async function checkAndAssignBadges(gestorId: string) {
   }
 }
 
-// Obter avaliação por ID
+// Obter avaliação por ID (admin ou o gestor avaliado)
 router.get('/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const avaliacaoSnap = await docRef('avaliacoes', req.params.id).get();
@@ -328,20 +337,17 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res: Response) =>
       return res.status(404).json({ error: 'Avaliação não encontrada' });
     }
 
-    const [gestorSnap, autorSnap] = await Promise.all([
-      docRef('gestores', avaliacao.gestorId).get(),
-      avaliacao.autorId ? docRef('users', avaliacao.autorId).get() : Promise.resolve(null)
-    ]);
-    const gestor = snapData<any>(gestorSnap as any);
-    const autor = autorSnap ? snapData<any>(autorSnap as any) : null;
+    const gestor = avaliacao.gestorId ? snapData<any>((await docRef('gestores', avaliacao.gestorId).get()) as any) : null;
+    if (req.user?.role !== Role.RH_ADMIN && (!gestor || gestor.userId !== req.user?.id)) {
+      return res.status(403).json({ error: 'Acesso não autorizado' });
+    }
 
     const gestorUserSnap = gestor ? await docRef('users', gestor.userId).get() : null;
     const gestorUser = gestorUserSnap ? snapData<any>(gestorUserSnap as any) : null;
 
     res.json({
-      ...avaliacao,
-      gestor: gestor ? { ...gestor, user: gestorUser ? { nome: gestorUser.nome } : null } : null,
-      autor: autor ? { nome: autor.nome } : null
+      ...semAutor(avaliacao),
+      gestor: gestor ? { ...gestor, user: gestorUser ? { nome: gestorUser.nome } : null } : null
     });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao obter avaliação' });

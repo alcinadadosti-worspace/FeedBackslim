@@ -2,7 +2,33 @@ import { WebClient } from '@slack/web-api';
 import { col, normalizeFirestoreData } from '../firestoreRepo';
 import { Role } from '../models';
 
-const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
+const slack = new WebClient(process.env.SLACK_BOT_TOKEN, {
+  timeout: 10_000,
+  retryConfig: { retries: 2 }
+});
+
+// Texto digitado por usuários (anônimos) vai para mensagens do bot: sem escapar,
+// alguém poderia montar links falsos como <https://site-malicioso|Ver no Painel>
+function escaparSlack(texto: string): string {
+  return texto.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function dataHojeBrasilia(): string {
+  return new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+}
+
+// Manda a mesma mensagem para vários destinatários; uma falha não impede os demais
+async function enviarParaTodos(destinatarios: string[], mensagem: { text: string; blocks: any[] }) {
+  const resultados = await Promise.allSettled(
+    destinatarios.map((channel) => slack.chat.postMessage({ channel, ...mensagem }))
+  );
+  resultados.forEach((r, i) => {
+    if (r.status === 'rejected') console.error(`Falha ao enviar mensagem Slack para ${destinatarios[i]}:`, r.reason);
+  });
+  if (resultados.length && resultados.every((r) => r.status === 'rejected')) {
+    throw new Error('Nenhuma mensagem Slack foi entregue');
+  }
+}
 
 function getPublicBaseUrl(): string {
   const raw =
@@ -126,7 +152,7 @@ export async function sendEvaluationNotification(params: EvaluationNotificationP
             },
             {
               type: 'mrkdwn',
-              text: `*Data:*\n${new Date().toLocaleDateString('pt-BR')}`
+              text: `*Data:*\n${dataHojeBrasilia()}`
             }
           ]
         },
@@ -134,7 +160,7 @@ export async function sendEvaluationNotification(params: EvaluationNotificationP
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `*Comentário:*\n_"${comentario.substring(0, 200)}${comentario.length > 200 ? '...' : ''}"_`
+            text: `*Comentário:*\n_"${escaparSlack(comentario.substring(0, 200))}${comentario.length > 200 ? '...' : ''}"_`
           }
         }] : []),
         {
@@ -231,7 +257,7 @@ export async function sendComplaintNotification(params: ComplaintNotificationPar
         fields: [
           {
             type: 'mrkdwn',
-            text: `*Pessoa envolvida:*\n${denunciadoNome}`
+            text: `*Pessoa envolvida:*\n${escaparSlack(denunciadoNome)}`
           },
           {
             type: 'mrkdwn',
@@ -243,7 +269,7 @@ export async function sendComplaintNotification(params: ComplaintNotificationPar
           },
           {
             type: 'mrkdwn',
-            text: `*Data:*\n${new Date().toLocaleDateString('pt-BR')}`
+            text: `*Data:*\n${dataHojeBrasilia()}`
           }
         ]
       }
@@ -254,7 +280,7 @@ export async function sendComplaintNotification(params: ComplaintNotificationPar
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `*Temas:*\n${temas.slice(0, 8).map((t) => `• ${t}`).join('\n')}${temas.length > 8 ? '\n• ...' : ''}`
+          text: `*Temas:*\n${temas.slice(0, 8).map((t) => `• ${escaparSlack(t)}`).join('\n')}${temas.length > 8 ? '\n• ...' : ''}`
         }
       });
     }
@@ -264,7 +290,7 @@ export async function sendComplaintNotification(params: ComplaintNotificationPar
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `*Identificação do denunciante:*\n👤 Nome: ${nomeIdentificado || '-'}\n🏢 Setor: ${setorIdentificado || '-'}`
+          text: `*Identificação do denunciante:*\n👤 Nome: ${escaparSlack(nomeIdentificado || '-')}\n🏢 Setor: ${escaparSlack(setorIdentificado || '-')}`
         }
       });
     } else if (anonima === false) {
@@ -282,7 +308,7 @@ export async function sendComplaintNotification(params: ComplaintNotificationPar
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `*Resumo:*\n_${descricao.substring(0, 240)}${descricao.length > 240 ? '...' : ''}_`
+          text: `*Resumo:*\n_${escaparSlack(descricao.substring(0, 240))}${descricao.length > 240 ? '...' : ''}_`
         }
       });
     }
@@ -303,13 +329,7 @@ export async function sendComplaintNotification(params: ComplaintNotificationPar
       ]
     });
 
-    for (const channel of recipients) {
-      await slack.chat.postMessage({
-        channel,
-        text: `Nova manifestação registrada na ouvidoria do Ouvidoria`,
-        blocks
-      });
-    }
+    await enviarParaTodos(recipients, { text: 'Nova manifestação registrada na Ouvidoria', blocks });
   } catch (error) {
     console.error('Erro ao enviar notificação Slack de denúncia:', error);
     throw error;
@@ -374,7 +394,7 @@ export async function sendCollaboratorFeedbackNotification(params: CollaboratorF
             },
             {
               type: 'mrkdwn',
-              text: `*Data:*\n${new Date().toLocaleDateString('pt-BR')}`
+              text: `*Data:*\n${dataHojeBrasilia()}`
             }
           ]
         },
@@ -382,7 +402,7 @@ export async function sendCollaboratorFeedbackNotification(params: CollaboratorF
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `*Comentário:*\n_"${comentario.substring(0, 200)}${comentario.length > 200 ? '...' : ''}"_`
+            text: `*Comentário:*\n_"${escaparSlack(comentario.substring(0, 200))}${comentario.length > 200 ? '...' : ''}"_`
           }
         }] : []),
         {
