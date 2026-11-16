@@ -1,6 +1,7 @@
 import { WebClient } from '@slack/web-api';
 import { col, normalizeFirestoreData } from '../firestoreRepo';
 import { Role } from '../models';
+import { destinatariosSemDenunciados } from './nomes';
 
 const slack = new WebClient(process.env.SLACK_BOT_TOKEN, {
   timeout: 10_000,
@@ -57,10 +58,13 @@ interface EvaluationNotificationParams {
 interface ComplaintNotificationParams {
   denunciadoNome: string;
   denunciadoSlackId?: string | null; // nunca deve receber a própria denúncia
+  nomesDenunciados?: string[]; // denúncias novas: nomes digitados, comparados com o nome dos admins
   tipo: string;
   tipoManifestacao?: string;
   temas?: string[];
   descricao?: string;
+  local?: string | null;
+  dataFatos?: string | null;
   denunciaId: string;
   anonima?: boolean;
   nomeIdentificado?: string;
@@ -80,28 +84,28 @@ function getTestSlackUserId(): string | undefined {
   return value ? String(value).trim() : undefined;
 }
 
-async function getHighLeadershipSlackUserIds(): Promise<string[]> {
+async function getHighLeadershipRecipients(): Promise<{ slackId: string; nome?: string | null }[]> {
   const testId = getTestSlackUserId();
-  if (testId) return [testId];
+  if (testId) return [{ slackId: testId }];
 
   const fromEnv = parseCommaList(process.env.SLACK_DENUNCIA_ESCALATION_IDS);
-  if (fromEnv.length) return fromEnv;
+  if (fromEnv.length) return fromEnv.map((slackId) => ({ slackId }));
 
   // Destinatários = todos os administradores (RH_ADMIN). Quem ganha ou perde o papel
   // de admin na plataforma passa a receber / deixa de receber as denúncias automaticamente.
   const usersSnap = await col('users').where('role', '==', Role.RH_ADMIN).get();
   const users = usersSnap.docs.map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }));
 
-  const slackIds: string[] = [];
+  const recipients: { slackId: string; nome: string | null }[] = [];
   for (const u of users) {
     const gestoresSnap = await col('gestores').where('userId', '==', u.id).limit(1).get();
     if (!gestoresSnap.empty) {
       const gestor = normalizeFirestoreData(gestoresSnap.docs[0].data()) as any;
-      if (gestor?.slackUserId) slackIds.push(String(gestor.slackUserId));
+      if (gestor?.slackUserId) recipients.push({ slackId: String(gestor.slackUserId), nome: u.nome || null });
     }
   }
 
-  return Array.from(new Set(slackIds));
+  return recipients;
 }
 
 // Enviar notificação de avaliação para o gestor
@@ -215,12 +219,14 @@ export async function sendComplaintNotification(params: ComplaintNotificationPar
   }
 
   try {
-    const { denunciadoNome, tipo, tipoManifestacao, temas, descricao, denunciaId, anonima, nomeIdentificado, setorIdentificado } = params;
+    const { denunciadoNome, tipo, tipoManifestacao, temas, descricao, local, dataFatos, denunciaId, anonima, nomeIdentificado, setorIdentificado } = params;
 
     const tipoLabels: Record<string, string> = {
       ASSEDIO_MORAL: 'Assédio Moral',
       COMPORTAMENTO_INADEQUADO: 'Comportamento Inadequado',
       ABUSO_AUTORIDADE: 'Abuso de Autoridade',
+      FRAUDE_CORRUPCAO: 'Fraude, Corrupção ou Conflito de Interesses',
+      CONDICOES_DEGRADANTES: 'Condições Degradantes de Trabalho',
       OUTROS: 'Outros'
     };
 
@@ -233,11 +239,12 @@ export async function sendComplaintNotification(params: ComplaintNotificationPar
       OUTRO: 'Outro'
     };
 
-    const allRecipients = await getHighLeadershipSlackUserIds();
     // Garantia de segurança: a pessoa denunciada nunca recebe a própria denúncia
-    const recipients = params.denunciadoSlackId
-      ? allRecipients.filter((id) => id !== params.denunciadoSlackId)
-      : allRecipients;
+    // (pelo Slack ID nas denúncias antigas, pelo nome digitado nas novas)
+    const recipients = destinatariosSemDenunciados(await getHighLeadershipRecipients(), {
+      slackId: params.denunciadoSlackId,
+      nomes: params.nomesDenunciados
+    });
     if (!recipients.length) {
       console.log('Slack não configurado - nenhum destinatário de alta liderança encontrado para denúncia');
       return;
@@ -257,7 +264,7 @@ export async function sendComplaintNotification(params: ComplaintNotificationPar
         fields: [
           {
             type: 'mrkdwn',
-            text: `*Pessoa envolvida:*\n${escaparSlack(denunciadoNome)}`
+            text: `*Pessoa(s) envolvida(s):*\n${escaparSlack(denunciadoNome.length > 500 ? `${denunciadoNome.substring(0, 500)}...` : denunciadoNome)}`
           },
           {
             type: 'mrkdwn',
@@ -274,6 +281,16 @@ export async function sendComplaintNotification(params: ComplaintNotificationPar
         ]
       }
     ];
+
+    if (local || dataFatos) {
+      blocks.push({
+        type: 'section',
+        fields: [
+          { type: 'mrkdwn', text: `*Local:*\n${escaparSlack(local || '-')}` },
+          { type: 'mrkdwn', text: `*Quando:*\n${escaparSlack(dataFatos || '-')}` }
+        ]
+      });
+    }
 
     if (temas?.length) {
       blocks.push({

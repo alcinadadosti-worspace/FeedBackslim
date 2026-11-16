@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { ArrowLeft, AlertTriangle, Eye, EyeOff, ChevronDown, ChevronUp, User, Building2, Hash, History, Paperclip, MessageSquare, Send } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Eye, EyeOff, ChevronDown, ChevronUp, Hash, History, Paperclip, MessageSquare, Send } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -15,22 +15,21 @@ import { Loading } from '@/components/ui/Loading';
 import { Textarea } from '@/components/ui/Textarea';
 import { HistoricoDenuncia } from '@/components/denuncia/HistoricoDenuncia';
 import { ProvaView } from '@/components/denuncia/ProvaView';
+import { DetalhesDenuncia } from '@/components/denuncia/DetalhesDenuncia';
+import { nomeDosDenunciados, rotulos, tipoDenunciaLabels } from '@/lib/denuncia';
 import { denunciasAPI, denunciaAndamentoAPI, ItemHistoricoDenuncia, ProvaDenuncia } from '@/lib/api';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const tiposOptions = [
   { value: '', label: 'Todos os tipos' },
-  { value: 'ASSEDIO_MORAL', label: 'Assédio Moral' },
-  { value: 'COMPORTAMENTO_INADEQUADO', label: 'Comportamento Inadequado' },
-  { value: 'ABUSO_AUTORIDADE', label: 'Abuso de Autoridade' },
-  { value: 'OUTROS', label: 'Outros' },
+  ...Object.entries(tipoDenunciaLabels).map(([value, label]) => ({ value, label })),
 ];
 
 const statusOptions = [
   { value: '', label: 'Todos os status' },
   { value: 'PENDENTE', label: 'Pendente' },
-  { value: 'EM_ANALISE', label: 'Em Análise' },
+  { value: 'EM_ANALISE', label: 'Em análise' },
   { value: 'RESOLVIDA', label: 'Resolvida' },
   { value: 'ARQUIVADA', label: 'Arquivada' },
 ];
@@ -154,8 +153,9 @@ export default function AdminDenunciasPage() {
           <div className="space-y-3 sm:space-y-4">
             {denuncias.map((denuncia) => {
               const isOpen = selectedDenuncia?.id === denuncia.id;
-              const denunciadoNome = denuncia.gestor?.user?.nome || denuncia.colaboradorNome || 'Desconhecido';
-              const isColaborador = !denuncia.gestor && !!denuncia.colaboradorNome;
+              const denunciadoNome = nomeDosDenunciados(denuncia);
+              // Denúncias antigas: pessoa escolhida na lista de colaboradores
+              const isColaborador = !denuncia.denunciados && !denuncia.gestor && !!denuncia.colaboradorNome;
               return (
                 <Card key={denuncia.id} id={`denuncia-${denuncia.id}`} className={`transition-all ${isOpen ? 'ring-2 ring-primary-500' : ''}`}>
                   {/* Header row */}
@@ -167,13 +167,13 @@ export default function AdminDenunciasPage() {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start gap-1.5 mb-1 flex-wrap">
-                        <h3 className="font-bold text-sm text-neutral-900 dark:text-neutral-100">{denunciadoNome}</h3>
+                        <h3 className="font-bold text-sm text-neutral-900 dark:text-neutral-100 break-words">{denunciadoNome}</h3>
                         {isColaborador && (
                           <span className="px-1.5 py-0.5 text-xs font-bold border border-neutral-400 text-neutral-500 dark:text-neutral-400">Col.</span>
                         )}
-                        <Badge variant="danger" className="text-xs">{denuncia.tipo.replace(/_/g, ' ')}</Badge>
+                        <Badge variant="danger" className="text-xs">{rotulos.tipoDenuncia(denuncia.tipo)}</Badge>
                         <span className={`px-1.5 py-0.5 text-xs font-bold border-2 border-neutral-900 ${statusColors[denuncia.status]}`}>
-                          {denuncia.status.replace(/_/g, ' ')}
+                          {statusOptions.find((o) => o.value === denuncia.status)?.label || denuncia.status}
                         </span>
                         {denuncia.anexosCount > 0 && (
                           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-bold border-2 border-neutral-900 bg-white dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200">
@@ -201,78 +201,7 @@ export default function AdminDenunciasPage() {
                   {/* Expanded detail */}
                   {isOpen && (
                     <div className="mt-4 pt-4 border-t-2 border-neutral-200 dark:border-neutral-700 space-y-4">
-                      {!denuncia.anonima && (
-                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 space-y-1">
-                          <p className="text-xs font-bold text-blue-800 dark:text-blue-300 uppercase mb-2">Identificação do Denunciante</p>
-                          <div className="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
-                            <User className="w-4 h-4 text-blue-600 shrink-0" />
-                            <span>Nome: <strong>{denuncia.nomeIdentificado || '—'}</strong></span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
-                            <Building2 className="w-4 h-4 text-blue-600 shrink-0" />
-                            <span>Setor: <strong>{denuncia.setorIdentificado || '—'}</strong></span>
-                          </div>
-                        </div>
-                      )}
-
-                      {denuncia.temas?.length > 0 && (
-                        <div>
-                          <p className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase mb-2">Temas abordados</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {denuncia.temas.map((tema: string) => (
-                              <span key={tema} className="px-2 py-1 bg-neutral-100 dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 text-xs text-neutral-700 dark:text-neutral-300">
-                                {tema}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      <div>
-                        <p className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase mb-1">Descrição</p>
-                        <p className="text-sm text-neutral-700 dark:text-neutral-300 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 p-3">{denuncia.descricao}</p>
-                      </div>
-
-                      {denuncia.descricaoComplementar && (
-                        <div>
-                          <p className="text-xs font-bold text-neutral-500 uppercase mb-1">Descrição Complementar</p>
-                          <p className="text-sm text-neutral-700 bg-neutral-50 border border-neutral-200 p-3">{denuncia.descricaoComplementar}</p>
-                        </div>
-                      )}
-
-                      {/* Grid de detalhes */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {denuncia.frequencia && (
-                          <div className="p-2 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600">
-                            <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Frequência</p>
-                            <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">{denuncia.frequencia.replace(/_/g, ' ')}</p>
-                          </div>
-                        )}
-                        {denuncia.impacto && (
-                          <div className="p-2 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600">
-                            <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Impacto</p>
-                            <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">{denuncia.impacto.replace(/_/g, ' ')}</p>
-                          </div>
-                        )}
-                        {denuncia.envolvidos && (
-                          <div className="p-2 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600">
-                            <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Outros envolvidos</p>
-                            <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">{denuncia.envolvidos.replace(/_/g, ' ')}</p>
-                          </div>
-                        )}
-                        {denuncia.comunicada && (
-                          <div className="p-2 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600">
-                            <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Já comunicada</p>
-                            <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">{denuncia.comunicada.replace(/_/g, ' ')}</p>
-                          </div>
-                        )}
-                        {denuncia.desejaRetorno && (
-                          <div className="p-2 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600">
-                            <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-0.5">Deseja retorno</p>
-                            <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">{denuncia.desejaRetorno.replace(/_/g, ' ')}</p>
-                          </div>
-                        )}
-                      </div>
+                      <DetalhesDenuncia denuncia={denuncia} />
 
                       {denuncia.codigoProtocolo && (
                         <div className="flex items-center gap-2 p-3 bg-neutral-100 dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600">
@@ -286,7 +215,7 @@ export default function AdminDenunciasPage() {
                         <p className="text-sm font-bold mb-2 sm:mb-3 dark:text-neutral-100">Alterar Status:</p>
                         <div className="flex flex-wrap gap-2">
                           <Button size="sm" variant={denuncia.status === 'PENDENTE' ? 'primary' : 'outline'} onClick={(e) => { e.stopPropagation(); handleStatusChange(denuncia.id, 'PENDENTE'); }}>Pendente</Button>
-                          <Button size="sm" variant={denuncia.status === 'EM_ANALISE' ? 'primary' : 'outline'} onClick={(e) => { e.stopPropagation(); handleStatusChange(denuncia.id, 'EM_ANALISE'); }}>Em Análise</Button>
+                          <Button size="sm" variant={denuncia.status === 'EM_ANALISE' ? 'primary' : 'outline'} onClick={(e) => { e.stopPropagation(); handleStatusChange(denuncia.id, 'EM_ANALISE'); }}>Em análise</Button>
                           <Button size="sm" variant={denuncia.status === 'RESOLVIDA' ? 'primary' : 'outline'} onClick={(e) => { e.stopPropagation(); handleStatusChange(denuncia.id, 'RESOLVIDA'); }}>Resolvida</Button>
                           <Button size="sm" variant={denuncia.status === 'ARQUIVADA' ? 'secondary' : 'outline'} onClick={(e) => { e.stopPropagation(); handleStatusChange(denuncia.id, 'ARQUIVADA'); }}>Arquivar</Button>
                         </div>

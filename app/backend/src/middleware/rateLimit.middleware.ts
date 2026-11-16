@@ -40,6 +40,8 @@ export const feedbackColaboradorLimiter = rateLimit({
 export const denunciaLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hora
   max: 10, // máximo 10 denúncias por hora por IP
+  // Envio recusado (ex.: campo obrigatório faltando) não conta: só denúncias registradas
+  skipFailedRequests: true,
   message: { error: 'Muitas denúncias enviadas. Tente novamente em 1 hora.' }
 });
 

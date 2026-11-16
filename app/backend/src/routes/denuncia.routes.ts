@@ -18,6 +18,7 @@ import {
 import { gerarTokenProvas } from '../services/denunciaProvas.service';
 import denunciaProvasRoutes from './denunciaProvas.routes';
 import { semDenunciasContraOUsuario, usuarioEhDenunciado } from '../services/conflitoInteresse';
+import { nomesDosDenunciados, PessoaDenunciada, resumoDosDenunciados } from '../services/nomes';
 
 const router = Router();
 
@@ -31,7 +32,81 @@ const statusLabels: Record<StatusDenuncia, string> = {
   [StatusDenuncia.ARQUIVADA]: 'Arquivada'
 };
 
-const createDenunciaSchema = z.object({
+const tipoManifestacaoSchema = z.enum(['DENUNCIA', 'RECLAMACAO', 'SUGESTAO_MELHORIA', 'ELOGIO', 'DUVIDA', 'OUTRO']);
+const frequenciaSchema = z.enum(['UMA_VEZ', 'MAIS_DE_UMA_VEZ', 'FREQUENTE']);
+const impactoSchema = z.enum(['DESEMPENHO', 'SAUDE_MENTAL', 'CLIMA_EQUIPE', 'RESULTADOS', 'NAO_SEI']);
+const comunicadaSchema = z.enum(['LIDERANCA', 'RH', 'OUTRO_CANAL', 'NAO']);
+const simNaoNaoSeiSchema = z.enum(['SIM', 'NAO', 'NAO_SEI']);
+
+const MAX_PESSOAS_DENUNCIADAS = 10;
+const TEMA_OUTROS = 'Outros';
+// Versão do termo de ciência aceito no formulário (o texto fica no frontend, em lib/denuncia.ts).
+// A versão 1 é o termo curto do formulário anterior.
+const VERSAO_TERMO_CIENCIA = 2;
+
+const textoLivre = (max: number, mensagem: string) => z.string().trim().max(max, mensagem).optional().default('');
+
+const pessoaDenunciadaSchema = z.object({
+  nome: textoLivre(120, 'O nome pode ter no máximo 120 caracteres'),
+  naoSabeNome: z.boolean().optional().default(false),
+  cargo: textoLivre(120, 'O cargo pode ter no máximo 120 caracteres'),
+  setor: textoLivre(120, 'O setor pode ter no máximo 120 caracteres')
+});
+
+// Formulário atual: pessoas citadas em campos livres (nome, cargo e setor)
+const novaDenunciaSchema = z.object({
+  denunciados: z
+    .array(pessoaDenunciadaSchema)
+    .min(1, 'Informe quem está envolvido na situação')
+    .max(MAX_PESSOAS_DENUNCIADAS, `Informe no máximo ${MAX_PESSOAS_DENUNCIADAS} pessoas`),
+  tipoManifestacao: tipoManifestacaoSchema,
+  temas: z.array(z.string().trim().min(1).max(200)).min(1, 'Selecione ao menos uma categoria').max(30),
+  temaOutro: textoLivre(200, 'A categoria "Outro" pode ter no máximo 200 caracteres'),
+  local: z.string().trim().min(2, 'Informe o local dos fatos').max(200, 'O local pode ter no máximo 200 caracteres'),
+  dataFatos: z.string().trim().min(2, 'Informe a data ou o período dos fatos').max(200, 'A data ou período pode ter no máximo 200 caracteres'),
+  descricao: z.string().trim().min(10, 'A descrição deve ter no mínimo 10 caracteres').max(20000, 'A descrição pode ter no máximo 20.000 caracteres'),
+  frequencia: frequenciaSchema,
+  impacto: impactoSchema,
+  testemunhas: simNaoNaoSeiSchema,
+  testemunhasDetalhes: textoLivre(2000, 'As informações sobre testemunhas podem ter no máximo 2.000 caracteres'),
+  condutaContinua: simNaoNaoSeiSchema,
+  comunicada: comunicadaSchema,
+  providenciaTomada: textoLivre(2000, 'A providência tomada pode ter no máximo 2.000 caracteres'),
+  desejaRetorno: z.enum(['SIM', 'NAO']),
+  declaracao: z.boolean().refine((v) => v === true, 'É preciso aceitar o termo de ciência'),
+  anonima: z.boolean().default(true),
+  nomeIdentificado: textoLivre(120, 'O nome pode ter no máximo 120 caracteres'),
+  setorIdentificado: textoLivre(120, 'O setor pode ter no máximo 120 caracteres'),
+  emailIdentificado: textoLivre(200, 'E-mail muito longo').refine((v) => !v || z.string().email().safeParse(v).success, 'E-mail inválido'),
+  telefoneIdentificado: textoLivre(30, 'Telefone inválido').refine(
+    (v) => !v || (/^[\d\s()+.-]+$/.test(v) && v.replace(/\D/g, '').length >= 8),
+    'Telefone inválido'
+  )
+}).superRefine((data, ctx) => {
+  const varias = data.denunciados.length > 1;
+  data.denunciados.forEach((p, i) => {
+    const mensagem = (texto: string) => (varias ? `Pessoa ${i + 1}: ${texto}` : texto.charAt(0).toUpperCase() + texto.slice(1));
+    if (!p.naoSabeNome && p.nome.length < 2) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['denunciados', i, 'nome'], message: mensagem('informe o nome ou marque "Não sei o nome"') });
+    }
+    if (p.naoSabeNome && !p.cargo && !p.setor) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['denunciados', i, 'cargo'], message: mensagem('sem o nome, informe ao menos o cargo ou o setor') });
+    }
+  });
+  if (data.temas.includes(TEMA_OUTROS) && data.temaOutro.length < 3) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['temaOutro'], message: 'Descreva a categoria "Outro"' });
+  }
+  if (data.testemunhas === 'SIM' && data.testemunhasDetalhes.length < 3) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['testemunhasDetalhes'], message: 'Informe o nome das testemunhas ou como encontrá-las' });
+  }
+  if (data.comunicada !== 'NAO' && data.providenciaTomada.length < 2) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['providenciaTomada'], message: 'Informe qual providência foi tomada' });
+  }
+});
+
+// Formulário anterior (pessoa escolhida numa lista). Continua aceito para quem estava com a
+// página aberta antes da atualização não perder o que escreveu.
+const denunciaFormatoAntigoSchema = z.object({
   gestorId: z.string().uuid('ID do gestor inválido').optional(),
   colaboradorSlackId: z.string().optional(),
   tipoManifestacao: z.enum(['DENUNCIA', 'RECLAMACAO', 'SUGESTAO_MELHORIA', 'ELOGIO', 'DUVIDA', 'OUTRO']),
@@ -169,58 +244,126 @@ router.get('/stats', authenticateToken, requireAdmin, async (req: AuthRequest, r
   }
 });
 
-// Criar denúncia (anônima - não requer autenticação)
-router.post('/', denunciaLimiter, async (req: AuthRequest, res: Response) => {
-  try {
-    const data = createDenunciaSchema.parse(req.body);
+function classificarTipo(temas: string[]): TipoDenuncia {
+  const has = (needle: string) => temas.some((t) => t.toLowerCase().includes(needle));
+  if (has('assédio moral') || has('assedio moral')) return TipoDenuncia.ASSEDIO_MORAL;
+  if (has('condições degradantes') || has('condicoes degradantes')) return TipoDenuncia.CONDICOES_DEGRADANTES;
+  if (has('fraude') || has('corrupção') || has('corrupcao') || has('conflito de interesses')) return TipoDenuncia.FRAUDE_CORRUPCAO;
+  if (has('falhas de gestão') || has('falhas de gestao') || has('injustiça') || has('injustica') || has('liderança') || has('lideranca')) {
+    return TipoDenuncia.ABUSO_AUTORIDADE;
+  }
+  if (has('conduta ética') || has('conduta etica') || has('antiética') || has('antietica') || has('assédio sexual') || has('assedio sexual') || has('discriminação') || has('discriminacao') || has('comportamento inadequado') || has('falta de respeito') || has('conflitos')) {
+    return TipoDenuncia.COMPORTAMENTO_INADEQUADO;
+  }
+  return TipoDenuncia.OUTROS;
+}
 
-    let denunciadoNome = '';
-    let denunciadoSlackId: string | null = null;
+class ErroDenuncia extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+  }
+}
 
-    if (data.gestorId) {
-      const gestorSnap = await docRef('gestores', data.gestorId).get();
-      const gestor = snapData<any>(gestorSnap as any);
-      if (!gestor) {
-        return res.status(404).json({ error: 'Gestor não encontrado' });
-      }
-      const gestorUserSnap = await docRef('users', gestor.userId).get();
-      const gestorUser = snapData<any>(gestorUserSnap as any);
-      denunciadoNome = gestorUser?.nome || 'Gestor';
-      denunciadoSlackId = gestor.slackUserId ?? null;
-    } else if (data.colaboradorSlackId) {
-      const colaborador = await findColaboradorBySlackId(data.colaboradorSlackId);
-      if (!colaborador) {
-        return res.status(404).json({ error: 'Colaborador não encontrado' });
-      }
-      denunciadoNome = colaborador.nome;
-      denunciadoSlackId = colaborador.slackId;
-    }
+interface DenunciaMontada {
+  campos: Record<string, any>;
+  tipoManifestacao: string;
+  temas: string[];
+  descricao: string;
+  anonima: boolean;
+  nomeIdentificado: string | null;
+  setorIdentificado: string | null;
+  local: string | null;
+  dataFatos: string | null;
+  denunciadoNome: string;
+  denunciadoSlackId: string | null;
+  nomesDenunciados: string[];
+}
 
-    // Criar denúncia anônima (sem autorId)
-    const now = new Date();
-    const denunciaId = uuidv4();
-    const codigoProtocolo = await gerarCodigoProtocolo();
+function montarDenunciaNova(body: unknown): DenunciaMontada {
+  const data = novaDenunciaSchema.parse(body);
+  const identificada = !data.anonima;
+  const denunciados: PessoaDenunciada[] = data.denunciados.map((p) => ({
+    nome: p.naoSabeNome ? null : p.nome,
+    naoSabeNome: p.naoSabeNome,
+    cargo: p.cargo || null,
+    setor: p.setor || null
+  }));
+  const denunciadoNome = resumoDosDenunciados(denunciados);
+  const nomeIdentificado = identificada ? data.nomeIdentificado || null : null;
+  const setorIdentificado = identificada ? data.setorIdentificado || null : null;
 
-    const tipo = (() => {
-      const temas = data.temas || [];
-      const has = (needle: string) => temas.some((t) => t.toLowerCase().includes(needle));
-      if (has('assédio moral') || has('assedio moral')) return TipoDenuncia.ASSEDIO_MORAL;
-      if (has('falhas de gestão') || has('falhas de gestao') || has('injustiça') || has('injustica') || has('liderança') || has('lideranca')) {
-        return TipoDenuncia.ABUSO_AUTORIDADE;
-      }
-      if (has('conduta ética') || has('conduta etica') || has('assédio sexual') || has('assedio sexual') || has('discriminação') || has('discriminacao') || has('comportamento inadequado') || has('falta de respeito') || has('conflitos')) {
-        return TipoDenuncia.COMPORTAMENTO_INADEQUADO;
-      }
-      return TipoDenuncia.OUTROS;
-    })();
+  return {
+    campos: {
+      gestorId: null,
+      colaboradorSlackId: null,
+      colaboradorNome: null,
+      denunciados,
+      denunciadosResumo: denunciadoNome,
+      tipoManifestacao: data.tipoManifestacao,
+      temas: data.temas,
+      temaOutro: data.temas.includes(TEMA_OUTROS) ? data.temaOutro : null,
+      local: data.local,
+      dataFatos: data.dataFatos,
+      descricao: data.descricao,
+      frequencia: data.frequencia,
+      impacto: data.impacto,
+      testemunhas: data.testemunhas,
+      testemunhasDetalhes: data.testemunhas === 'SIM' ? data.testemunhasDetalhes : null,
+      condutaContinua: data.condutaContinua,
+      comunicada: data.comunicada,
+      providenciaTomada: data.comunicada !== 'NAO' ? data.providenciaTomada : null,
+      desejaRetorno: data.desejaRetorno,
+      declaracao: data.declaracao,
+      termoVersao: VERSAO_TERMO_CIENCIA,
+      anonima: data.anonima,
+      nomeIdentificado,
+      setorIdentificado,
+      emailIdentificado: identificada ? data.emailIdentificado || null : null,
+      telefoneIdentificado: identificada ? data.telefoneIdentificado || null : null
+    },
+    tipoManifestacao: data.tipoManifestacao,
+    temas: data.temas,
+    descricao: data.descricao,
+    anonima: data.anonima,
+    nomeIdentificado,
+    setorIdentificado,
+    local: data.local,
+    dataFatos: data.dataFatos,
+    denunciadoNome,
+    denunciadoSlackId: null,
+    nomesDenunciados: nomesDosDenunciados({ denunciados })
+  };
+}
 
-    await docRef('denuncias', denunciaId).set({
-      id: denunciaId,
+async function montarDenunciaFormatoAntigo(body: unknown): Promise<DenunciaMontada> {
+  const data = denunciaFormatoAntigoSchema.parse(body);
+
+  let denunciadoNome = '';
+  let denunciadoSlackId: string | null = null;
+
+  if (data.gestorId) {
+    const gestorSnap = await docRef('gestores', data.gestorId).get();
+    const gestor = snapData<any>(gestorSnap as any);
+    if (!gestor) throw new ErroDenuncia(404, 'Gestor não encontrado');
+    const gestorUserSnap = await docRef('users', gestor.userId).get();
+    const gestorUser = snapData<any>(gestorUserSnap as any);
+    denunciadoNome = gestorUser?.nome || 'Gestor';
+    denunciadoSlackId = gestor.slackUserId ?? null;
+  } else if (data.colaboradorSlackId) {
+    const colaborador = await findColaboradorBySlackId(data.colaboradorSlackId);
+    if (!colaborador) throw new ErroDenuncia(404, 'Colaborador não encontrado');
+    denunciadoNome = colaborador.nome;
+    denunciadoSlackId = colaborador.slackId;
+  }
+
+  const nomeIdentificado = !data.anonima ? data.nomeIdentificado || null : null;
+  const setorIdentificado = !data.anonima ? data.setorIdentificado || null : null;
+
+  return {
+    campos: {
       gestorId: data.gestorId || null,
       colaboradorSlackId: data.colaboradorSlackId || null,
       colaboradorNome: data.colaboradorSlackId ? denunciadoNome : null,
-      autorId: null,
-      tipo,
       tipoManifestacao: data.tipoManifestacao,
       temas: data.temas,
       descricao: data.descricao,
@@ -232,8 +375,41 @@ router.post('/', denunciaLimiter, async (req: AuthRequest, res: Response) => {
       desejaRetorno: data.desejaRetorno,
       declaracao: data.declaracao,
       anonima: data.anonima,
-      nomeIdentificado: !data.anonima ? (data.nomeIdentificado || null) : null,
-      setorIdentificado: !data.anonima ? (data.setorIdentificado || null) : null,
+      nomeIdentificado,
+      setorIdentificado
+    },
+    tipoManifestacao: data.tipoManifestacao,
+    temas: data.temas,
+    descricao: data.descricao,
+    anonima: data.anonima,
+    nomeIdentificado,
+    setorIdentificado,
+    local: null,
+    dataFatos: null,
+    denunciadoNome,
+    denunciadoSlackId,
+    nomesDenunciados: []
+  };
+}
+
+// Criar denúncia (anônima - não requer autenticação)
+router.post('/', denunciaLimiter, async (req: AuthRequest, res: Response) => {
+  try {
+    const montada = Array.isArray(req.body?.denunciados)
+      ? montarDenunciaNova(req.body)
+      : await montarDenunciaFormatoAntigo(req.body);
+
+    // Criar denúncia anônima (sem autorId)
+    const now = new Date();
+    const denunciaId = uuidv4();
+    const codigoProtocolo = await gerarCodigoProtocolo();
+    const tipo = classificarTipo(montada.temas);
+
+    await docRef('denuncias', denunciaId).set({
+      id: denunciaId,
+      autorId: null,
+      tipo,
+      ...montada.campos,
       codigoProtocolo,
       comentarioRH: null,
       status: StatusDenuncia.PENDENTE,
@@ -244,16 +420,19 @@ router.post('/', denunciaLimiter, async (req: AuthRequest, res: Response) => {
     // Enviar notificações Slack
     try {
       await sendComplaintNotification({
-        denunciadoNome,
-        denunciadoSlackId,
+        denunciadoNome: montada.denunciadoNome,
+        denunciadoSlackId: montada.denunciadoSlackId,
+        nomesDenunciados: montada.nomesDenunciados,
         tipo,
-        tipoManifestacao: data.tipoManifestacao,
-        temas: data.temas,
-        descricao: data.descricao,
+        tipoManifestacao: montada.tipoManifestacao,
+        temas: montada.temas,
+        descricao: montada.descricao,
+        local: montada.local,
+        dataFatos: montada.dataFatos,
         denunciaId: denunciaId,
-        anonima: data.anonima,
-        nomeIdentificado: data.nomeIdentificado,
-        setorIdentificado: data.setorIdentificado
+        anonima: montada.anonima,
+        nomeIdentificado: montada.nomeIdentificado || undefined,
+        setorIdentificado: montada.setorIdentificado || undefined
       });
     } catch (slackError) {
       console.error('Erro ao enviar notificação Slack:', slackError);
@@ -262,7 +441,7 @@ router.post('/', denunciaLimiter, async (req: AuthRequest, res: Response) => {
     res.status(201).json({
       id: denunciaId,
       tipo,
-      tipoManifestacao: data.tipoManifestacao,
+      tipoManifestacao: montada.tipoManifestacao,
       status: StatusDenuncia.PENDENTE,
       codigoProtocolo,
       createdAt: now,
@@ -273,6 +452,9 @@ router.post('/', denunciaLimiter, async (req: AuthRequest, res: Response) => {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors[0].message });
+    }
+    if (error instanceof ErroDenuncia) {
+      return res.status(error.status).json({ error: error.message });
     }
     console.error(error);
     res.status(500).json({ error: 'Erro ao criar denúncia' });

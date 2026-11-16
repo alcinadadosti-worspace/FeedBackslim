@@ -2,18 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { AlertTriangle, Shield, Eye, EyeOff, Send, Copy, CheckCheck, CheckCircle2, UserCheck, Users, Paperclip, X, Loader2, XCircle, Clock } from 'lucide-react';
+import { AlertTriangle, Shield, Eye, EyeOff, Send, Copy, CheckCheck, CheckCircle2, Paperclip, X, Loader2, XCircle, Clock, UserPlus, Trash2 } from 'lucide-react';
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { Card, CardTitle, CardContent } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { Button } from '@/components/ui/Button';
-import { Avatar } from '@/components/ui/Avatar';
-import { Loading } from '@/components/ui/Loading';
-import { gestoresAPI, denunciasAPI, colaboradoresAPI, provasDenunciaAPI } from '@/lib/api';
+import { denunciasAPI, provasDenunciaAPI } from '@/lib/api';
 import {
   ACCEPT_PROVAS,
   MAX_BYTES_POR_PROVA,
@@ -22,6 +19,20 @@ import {
   formatarTamanho,
   provaPermitida,
 } from '@/lib/provas';
+import {
+  CATEGORIA_OUTRO,
+  MAX_PESSOAS_DENUNCIADAS,
+  ORIENTACAO_DESCRICAO,
+  TERMO_CIENCIA,
+  categoriasOptions,
+  comunicadaOptions,
+  frequenciaOptions,
+  impactoOptions,
+  retornoOptions,
+  simNaoNaoSeiOptions,
+  tiposManifestacaoOptions,
+  type Opcao,
+} from '@/lib/denuncia';
 
 type EnvioProva = {
   arquivo: File;
@@ -30,98 +41,42 @@ type EnvioProva = {
   erro?: string;
 };
 
-const tiposManifestacao = [
-  { value: '', label: 'Selecione o tipo' },
-  { value: 'DENUNCIA', label: 'Denúncia' },
-  { value: 'RECLAMACAO', label: 'Reclamação' },
-  { value: 'SUGESTAO_MELHORIA', label: 'Sugestão de melhoria' },
-  { value: 'ELOGIO', label: 'Elogio' },
-  { value: 'DUVIDA', label: 'Dúvida' },
-  { value: 'OUTRO', label: 'Outro' },
-];
+type Pessoa = {
+  nome: string;
+  naoSabeNome: boolean;
+  cargo: string;
+  setor: string;
+};
 
-const temasOptions = [
-  'Conduta ética ou comportamento inadequado',
-  'Assédio moral',
-  'Assédio sexual',
-  'Discriminação (gênero, raça, idade, religião, orientação sexual, deficiência, etc.)',
-  'Relacionamento com liderança',
-  'Clima organizacional',
-  'Comunicação interna',
-  'Sobrecarga de trabalho / metas excessivas',
-  'Saúde mental e bem-estar',
-  'Falta de respeito no ambiente de trabalho',
-  'Conflitos entre colegas',
-  'Processos internos ineficientes',
-  'Falhas de gestão ou liderança',
-  'Injustiça ou favorecimento indevido',
-  'Segurança no trabalho',
-  'Descumprimento de normas ou políticas internas',
-  'Outros',
-];
+const pessoaVazia = (): Pessoa => ({ nome: '', naoSabeNome: false, cargo: '', setor: '' });
 
-const frequenciaOptions = [
-  { value: '', label: 'Selecione' },
-  { value: 'UMA_VEZ', label: 'Uma única vez' },
-  { value: 'MAIS_DE_UMA_VEZ', label: 'Mais de uma vez' },
-  { value: 'FREQUENTE', label: 'Ocorre com frequência' },
-];
+const comSelecione = (opcoes: Opcao[], texto = 'Selecione'): Opcao[] => [{ value: '', label: texto }, ...opcoes];
 
-const impactoOptions = [
-  { value: '', label: 'Selecione' },
-  { value: 'DESEMPENHO', label: 'Impacta meu desempenho' },
-  { value: 'SAUDE_MENTAL', label: 'Impacta minha saúde emocional ou mental' },
-  { value: 'CLIMA_EQUIPE', label: 'Impacta o clima da equipe' },
-  { value: 'RESULTADOS', label: 'Impacta os resultados da área' },
-  { value: 'NAO_SEI', label: 'Não sei avaliar' },
-];
-
-const envolvidosOptions = [
-  { value: '', label: 'Selecione' },
-  { value: 'SIM', label: 'Sim' },
-  { value: 'NAO', label: 'Não' },
-  { value: 'NAO_SEI', label: 'Não sei' },
-];
-
-const comunicadaOptions = [
-  { value: '', label: 'Selecione' },
-  { value: 'LIDERANCA', label: 'Sim, à liderança' },
-  { value: 'RH', label: 'Sim, ao RH' },
-  { value: 'OUTRO_CANAL', label: 'Sim, a outro canal' },
-  { value: 'NAO', label: 'Não' },
-];
-
-const retornoOptions = [
-  { value: '', label: 'Selecione' },
-  { value: 'SIM', label: 'Sim' },
-  { value: 'NAO', label: 'Não' },
-];
-
-type TipoDenunciado = 'gestor' | 'colaborador';
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const telefoneValido = (v: string) => /^[\d\s()+.-]+$/.test(v) && v.replace(/\D/g, '').length >= 8;
 
 export default function OuvidoriaPage() {
-  const router = useRouter();
-  const [tipoDenunciado, setTipoDenunciado] = useState<TipoDenunciado>('gestor');
-  const [gestores, setGestores] = useState<any[]>([]);
-  const [colaboradores, setColaboradores] = useState<any[]>([]);
-  const [selectedGestorId, setSelectedGestorId] = useState('');
-  const [selectedGestor, setSelectedGestor] = useState<any>(null);
-  const [selectedColaboradorSlackId, setSelectedColaboradorSlackId] = useState('');
-  const [selectedColaborador, setSelectedColaborador] = useState<any>(null);
+  const [pessoas, setPessoas] = useState<Pessoa[]>([pessoaVazia()]);
   const [tipoManifestacao, setTipoManifestacao] = useState('');
   const [temas, setTemas] = useState<string[]>([]);
+  const [temaOutro, setTemaOutro] = useState('');
+  const [local, setLocal] = useState('');
+  const [dataFatos, setDataFatos] = useState('');
   const [descricao, setDescricao] = useState('');
-  const [descricaoComplementar, setDescricaoComplementar] = useState('');
   const [frequencia, setFrequencia] = useState('');
   const [impacto, setImpacto] = useState('');
-  const [envolvidos, setEnvolvidos] = useState('');
+  const [testemunhas, setTestemunhas] = useState('');
+  const [testemunhasDetalhes, setTestemunhasDetalhes] = useState('');
+  const [condutaContinua, setCondutaContinua] = useState('');
   const [comunicada, setComunicada] = useState('');
+  const [providenciaTomada, setProvidenciaTomada] = useState('');
   const [desejaRetorno, setDesejaRetorno] = useState('');
   const [declaracao, setDeclaracao] = useState(false);
   const [anonima, setAnonima] = useState(true);
   const [nomeIdentificado, setNomeIdentificado] = useState('');
   const [setorIdentificado, setSetorIdentificado] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [emailIdentificado, setEmailIdentificado] = useState('');
+  const [telefoneIdentificado, setTelefoneIdentificado] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [codigoProtocolo, setCodigoProtocolo] = useState<string | null>(null);
@@ -145,113 +100,60 @@ export default function OuvidoriaPage() {
     return () => window.removeEventListener('beforeunload', aviso);
   }, [enviandoProvas]);
 
-  useEffect(() => {
-    loadGestores();
-  }, []);
-
-  useEffect(() => {
-    if (selectedGestorId) {
-      const gestor = gestores.find((g) => g.id === selectedGestorId);
-      setSelectedGestor(gestor ?? null);
-    } else {
-      setSelectedGestor(null);
-    }
-  }, [selectedGestorId, gestores]);
-
-  useEffect(() => {
-    if (selectedColaboradorSlackId) {
-      const col = colaboradores.find((c) => c.slackId === selectedColaboradorSlackId);
-      setSelectedColaborador(col ?? null);
-    } else {
-      setSelectedColaborador(null);
-    }
-  }, [selectedColaboradorSlackId, colaboradores]);
-
-  const loadGestores = async () => {
-    try {
-      const [gestoresRes, colaboradoresRes] = await Promise.allSettled([
-        gestoresAPI.list(),
-        colaboradoresAPI.list(),
-      ]);
-      if (gestoresRes.status === 'fulfilled') setGestores(gestoresRes.value.data);
-      if (colaboradoresRes.status === 'fulfilled') setColaboradores(colaboradoresRes.value.data);
-    } catch (error) {
-      console.error('Erro ao carregar dados:', error);
-    } finally {
-      setLoading(false);
-    }
+  const atualizarPessoa = (indice: number, dados: Partial<Pessoa>) => {
+    setPessoas((prev) => prev.map((p, i) => (i === indice ? { ...p, ...dados } : p)));
   };
 
-  const handleTipoChange = (tipo: TipoDenunciado) => {
-    setTipoDenunciado(tipo);
-    setSelectedGestorId('');
-    setSelectedGestor(null);
-    setSelectedColaboradorSlackId('');
-    setSelectedColaborador(null);
+  const adicionarPessoa = () => {
+    setPessoas((prev) => (prev.length >= MAX_PESSOAS_DENUNCIADAS ? prev : [...prev, pessoaVazia()]));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const removerPessoa = (indice: number) => {
+    setPessoas((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== indice)));
+  };
+
+  const outroSelecionado = temas.includes(CATEGORIA_OUTRO);
+  const temTestemunhas = testemunhas === 'SIM';
+  const foiComunicada = !!comunicada && comunicada !== 'NAO';
+
+  // Mesmas regras do servidor; devolve a primeira mensagem de erro ou null
+  const validar = (): string | null => {
+    if (!tipoManifestacao) return 'Selecione o tipo de manifestação';
+    for (let i = 0; i < pessoas.length; i++) {
+      const p = pessoas[i];
+      const mensagem = (texto: string) =>
+        pessoas.length > 1 ? `Pessoa ${i + 1}: ${texto}` : texto.charAt(0).toUpperCase() + texto.slice(1);
+      if (!p.naoSabeNome && p.nome.trim().length < 2) return mensagem('informe o nome ou marque "Não sei o nome"');
+      if (p.naoSabeNome && !p.cargo.trim() && !p.setor.trim()) return mensagem('sem o nome, informe ao menos o cargo ou o setor');
+    }
+    if (temas.length === 0) return 'Selecione ao menos uma categoria';
+    if (outroSelecionado && temaOutro.trim().length < 3) return 'Descreva a categoria "Outro"';
+    if (local.trim().length < 2) return 'Informe o local dos fatos';
+    if (dataFatos.trim().length < 2) return 'Informe a data ou o período dos fatos';
+    if (descricao.trim().length < 10) return 'A descrição deve ter pelo menos 10 caracteres';
+    if (!frequencia) return 'Informe com que frequência a situação ocorreu';
+    if (!impacto) return 'Selecione o impacto da situação';
+    if (!testemunhas) return 'Informe se há testemunhas';
+    if (temTestemunhas && testemunhasDetalhes.trim().length < 3) return 'Informe o nome das testemunhas ou como encontrá-las';
+    if (!condutaContinua) return 'Informe se a conduta ainda está acontecendo';
+    if (!comunicada) return 'Informe se a situação já foi comunicada a alguém da empresa';
+    if (foiComunicada && providenciaTomada.trim().length < 2) return 'Informe qual providência foi tomada';
+    if (!desejaRetorno) return 'Informe se deseja receber retorno';
+    if (!anonima) {
+      if (emailIdentificado.trim() && !EMAIL_RE.test(emailIdentificado.trim())) return 'E-mail inválido';
+      if (telefoneIdentificado.trim() && !telefoneValido(telefoneIdentificado.trim())) return 'Telefone inválido';
+    }
+    if (!declaracao) return 'Você precisa ler e aceitar o termo de ciência';
+    return null;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (tipoDenunciado === 'gestor' && !selectedGestorId) {
-      toast.error('Selecione o gestor');
+    const erro = validar();
+    if (erro) {
+      toast.error(erro);
       return;
     }
-    if (tipoDenunciado === 'colaborador' && !selectedColaboradorSlackId) {
-      toast.error('Selecione o colaborador');
-      return;
-    }
-
-    if (!tipoManifestacao) {
-      toast.error('Selecione o tipo de manifestação');
-      return;
-    }
-
-    if (temas.length === 0) {
-      toast.error('Selecione pelo menos um tema');
-      return;
-    }
-
-    if (descricao.length < 10) {
-      toast.error('A descrição deve ter pelo menos 10 caracteres');
-      return;
-    }
-
-    if (descricaoComplementar.length < 10) {
-      toast.error('A descrição complementar deve ter pelo menos 10 caracteres');
-      return;
-    }
-
-    if (!frequencia) {
-      toast.error('Selecione a frequência');
-      return;
-    }
-
-    if (!impacto) {
-      toast.error('Selecione o impacto');
-      return;
-    }
-
-    if (!envolvidos) {
-      toast.error('Selecione se alguém mais está envolvido');
-      return;
-    }
-
-    if (!comunicada) {
-      toast.error('Selecione se a situação já foi comunicada');
-      return;
-    }
-
-    if (!desejaRetorno) {
-      toast.error('Selecione se deseja receber retorno');
-      return;
-    }
-
-    if (!declaracao) {
-      toast.error('Você precisa concordar com a declaração final');
-      return;
-    }
-
     setShowConfirmation(true);
   };
 
@@ -325,19 +227,34 @@ export default function OuvidoriaPage() {
 
     try {
       const response = await denunciasAPI.create({
-        ...(tipoDenunciado === 'gestor' ? { gestorId: selectedGestorId } : { colaboradorSlackId: selectedColaboradorSlackId }),
+        denunciados: pessoas.map((p) => ({
+          nome: p.naoSabeNome ? '' : p.nome.trim(),
+          naoSabeNome: p.naoSabeNome,
+          cargo: p.cargo.trim(),
+          setor: p.setor.trim(),
+        })),
         tipoManifestacao,
         temas,
-        descricao,
-        descricaoComplementar,
+        temaOutro: outroSelecionado ? temaOutro.trim() : '',
+        local: local.trim(),
+        dataFatos: dataFatos.trim(),
+        descricao: descricao.trim(),
         frequencia,
         impacto,
-        envolvidos,
+        testemunhas,
+        testemunhasDetalhes: temTestemunhas ? testemunhasDetalhes.trim() : '',
+        condutaContinua,
         comunicada,
+        providenciaTomada: foiComunicada ? providenciaTomada.trim() : '',
         desejaRetorno,
         declaracao,
         anonima,
-        ...(!anonima && { nomeIdentificado, setorIdentificado }),
+        ...(!anonima && {
+          nomeIdentificado: nomeIdentificado.trim(),
+          setorIdentificado: setorIdentificado.trim(),
+          emailIdentificado: emailIdentificado.trim(),
+          telefoneIdentificado: telefoneIdentificado.trim(),
+        }),
       });
 
       toast.success('Denúncia registrada com sucesso. O RH será notificado.');
@@ -361,25 +278,9 @@ export default function OuvidoriaPage() {
     }
   };
 
-  const gestorOptions = [
-    { value: '', label: 'Selecione o gestor' },
-    ...gestores.map((g) => ({
-      value: g.id,
-      label: `${g.user?.nome} - ${g.cargo}`,
-    })),
-  ];
-
-  const colaboradorOptions = [
-    { value: '', label: 'Selecione o colaborador' },
-    ...colaboradores.map((c) => ({
-      value: c.slackId,
-      label: c.nome,
-    })),
-  ];
-
-  const denunciadoNome = tipoDenunciado === 'gestor'
-    ? selectedGestor?.user?.nome
-    : selectedColaborador?.nome;
+  const resumoPessoas = pessoas
+    .map((p) => (!p.naoSabeNome && p.nome.trim() ? p.nome.trim() : [p.cargo, p.setor].map((x) => x.trim()).filter(Boolean).join(', ') || 'pessoa não identificada'))
+    .join('; ');
 
   const handleCopiar = () => {
     if (!codigoProtocolo) return;
@@ -495,28 +396,28 @@ export default function OuvidoriaPage() {
               <h2 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">Confirmar envio?</h2>
             </div>
             <p className="text-neutral-600 dark:text-neutral-300 mb-2">
-              Você está registrando uma denúncia{' '}
+              Você está registrando uma manifestação{' '}
               <strong className="text-neutral-900 dark:text-neutral-100">{anonima ? 'anônima' : 'identificada'}</strong>{' '}
-              contra <strong className="text-neutral-900 dark:text-neutral-100">{denunciadoNome}</strong>.
+              envolvendo <strong className="text-neutral-900 dark:text-neutral-100 break-words">{resumoPessoas}</strong>.
             </p>
             {provas.length > 0 && (
               <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-2">
                 {provas.length === 1 ? '1 prova será enviada' : `${provas.length} provas serão enviadas`} logo em seguida.
               </p>
             )}
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">Esta ação não pode ser desfeita.</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">Depois de enviada, a manifestação não pode ser alterada.</p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowConfirmation(false)}
                 className="flex-1 py-2.5 font-semibold border-2 border-neutral-900 dark:border-neutral-100 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
               >
-                Cancelar
+                Voltar e revisar
               </button>
               <button
                 onClick={handleConfirmSubmit}
                 className="flex-1 py-2.5 font-semibold bg-red-500 text-white border-2 border-neutral-900 hover:bg-red-600 transition-colors"
               >
-                Confirmar Envio
+                Confirmar envio
               </button>
             </div>
           </div>
@@ -532,7 +433,8 @@ export default function OuvidoriaPage() {
             <h1 className="text-2xl sm:text-3xl font-display font-bold text-neutral-900 dark:text-neutral-100">Ouvidoria</h1>
           </div>
           <p className="text-neutral-600 dark:text-neutral-300">
-            Registre denúncias de forma confidencial. Todas as informações serão tratadas com sigilo.
+            Registre sua manifestação de forma confidencial. Todas as informações são tratadas com sigilo.
+            Os campos marcados com * são obrigatórios.
           </p>
         </div>
 
@@ -542,323 +444,431 @@ export default function OuvidoriaPage() {
             Registrar Denúncia
           </CardTitle>
 
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <Loading />
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit}>
-              <CardContent className="space-y-6">
-                {/* Toggle Gestor / Colaborador */}
-                <div className="flex gap-2 p-1 bg-neutral-100 dark:bg-neutral-700 border-2 border-neutral-200 dark:border-neutral-600">
-                  <button
-                    type="button"
-                    onClick={() => handleTipoChange('gestor')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 font-semibold text-sm transition-colors ${
-                      tipoDenunciado === 'gestor'
-                        ? 'bg-white dark:bg-neutral-600 border-2 border-neutral-900 dark:border-neutral-100 text-neutral-900 dark:text-neutral-100'
-                        : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200'
-                    }`}
-                  >
-                    <UserCheck className="w-4 h-4" />
-                    Denunciar Gestor
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleTipoChange('colaborador')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 font-semibold text-sm transition-colors ${
-                      tipoDenunciado === 'colaborador'
-                        ? 'bg-white dark:bg-neutral-600 border-2 border-neutral-900 dark:border-neutral-100 text-neutral-900 dark:text-neutral-100'
-                        : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200'
-                    }`}
-                  >
-                    <Users className="w-4 h-4" />
-                    Denunciar Colaborador
-                  </button>
-                </div>
+          <form onSubmit={handleSubmit}>
+            <CardContent className="space-y-6">
+              <Select
+                label="Tipo de manifestação *"
+                options={comSelecione(tiposManifestacaoOptions, 'Selecione o tipo')}
+                value={tipoManifestacao}
+                onChange={(e) => setTipoManifestacao(e.target.value)}
+              />
 
-                {/* Seleção do Denunciado */}
-                {tipoDenunciado === 'gestor' ? (
-                  <div>
-                    <Select
-                      label="Gestor Denunciado"
-                      options={gestorOptions}
-                      value={selectedGestorId}
-                      onChange={(e) => setSelectedGestorId(e.target.value)}
-                    />
-                    {selectedGestor && (
-                      <div className="mt-4 p-4 bg-neutral-50 dark:bg-neutral-700 border-2 border-neutral-200 dark:border-neutral-600 flex items-center gap-4">
-                        <Avatar src={selectedGestor.foto} alt={selectedGestor.user?.nome} size="md" />
-                        <div>
-                          <p className="font-bold text-neutral-900 dark:text-neutral-100">{selectedGestor.user?.nome}</p>
-                          <p className="text-sm text-neutral-600 dark:text-neutral-300">{selectedGestor.cargo}</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div>
-                    <Select
-                      label="Colaborador Denunciado"
-                      options={colaboradorOptions}
-                      value={selectedColaboradorSlackId}
-                      onChange={(e) => setSelectedColaboradorSlackId(e.target.value)}
-                    />
-                    {selectedColaborador && (
-                      <div className="mt-4 p-4 bg-neutral-50 dark:bg-neutral-700 border-2 border-neutral-200 dark:border-neutral-600 flex items-center gap-4">
-                        <div className="w-10 h-10 bg-neutral-200 dark:bg-neutral-600 border-2 border-neutral-300 dark:border-neutral-500 flex items-center justify-center font-bold text-neutral-600 dark:text-neutral-100">
-                          {selectedColaborador.nome.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <p className="font-bold text-neutral-900 dark:text-neutral-100">{selectedColaborador.nome}</p>
-                          <p className="text-sm text-neutral-500 dark:text-neutral-400">Colaborador</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <Select
-                  label="Tipo de manifestação"
-                  options={tiposManifestacao}
-                  value={tipoManifestacao}
-                  onChange={(e) => setTipoManifestacao(e.target.value)}
-                />
-
-                <div>
-                  <p className="font-bold text-neutral-900 dark:text-neutral-100 mb-2">Temas abordados</p>
-                  <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-3">
-                    Selecione o(s) tema(s) relacionado(s) à sua manifestação:
-                  </p>
-                  <div className="space-y-2">
-                    {temasOptions.map((t) => {
-                      const checked = temas.includes(t);
-                      return (
-                        <label
-                          key={t}
-                          className="flex items-start gap-3 p-3 bg-white dark:bg-neutral-700 border-2 border-neutral-200 dark:border-neutral-600 hover:border-neutral-300 dark:hover:border-neutral-400 transition-colors cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            className="mt-1"
-                            checked={checked}
-                            onChange={() => {
-                              setTemas((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
-                            }}
-                          />
-                          <span className="text-sm text-neutral-800 dark:text-neutral-100">{t}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Descrição */}
-                <div>
-                  <Textarea
-                    label="Descrição da manifestação"
-                    placeholder="Descreva em detalhes o ocorrido. Inclua datas, locais e outras informações relevantes."
-                    value={descricao}
-                    onChange={(e) => setDescricao(e.target.value)}
-                    rows={6}
-                  />
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                    Mínimo de 10 caracteres. Quanto mais detalhes, melhor.
-                  </p>
-                </div>
-
-                <div>
-                  <Textarea
-                    label="Descrição complementar"
-                    placeholder="Descreva com o máximo de detalhes possível o ocorrido ou sua sugestão."
-                    value={descricaoComplementar}
-                    onChange={(e) => setDescricaoComplementar(e.target.value)}
-                    rows={6}
-                  />
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                    Sempre que possível, informe fatos, datas, locais, envolvidos (nomes ou cargos) e impactos.
-                  </p>
-                </div>
-
-                {/* Provas */}
-                <div>
-                  <p className="block text-sm font-bold text-neutral-900 dark:text-neutral-100 mb-2 uppercase tracking-wide">
-                    Provas (opcional)
-                  </p>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3">
-                    Anexe fotos ou vídeos que ajudem a entender o ocorrido: até {MAX_PROVAS_POR_DENUNCIA} arquivos de até 30 MB
-                    cada. Fotos e vídeos podem guardar dados como local e modelo do celular; para manter o anonimato,
-                    prefira capturas de tela.
-                  </p>
-                  <input
-                    id="provas-input"
-                    type="file"
-                    multiple
-                    accept={ACCEPT_PROVAS}
-                    className="hidden"
-                    onChange={adicionarProvas}
-                  />
-                  {provas.length < MAX_PROVAS_POR_DENUNCIA && (
-                    <label
-                      htmlFor="provas-input"
-                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold border-2 border-neutral-900 dark:border-neutral-100 text-neutral-900 dark:text-neutral-100 bg-white dark:bg-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-600 cursor-pointer"
+              {/* Pessoas envolvidas */}
+              <div>
+                <p className="block text-sm font-bold text-neutral-900 dark:text-neutral-100 mb-1 uppercase tracking-wide">
+                  Pessoa(s) envolvida(s) *
+                </p>
+                <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-3">
+                  Informe quem praticou ou participou da situação. Se não souber o nome, marque &quot;Não sei o nome&quot; e
+                  informe o cargo ou o setor.
+                </p>
+                <div className="space-y-3">
+                  {pessoas.map((pessoa, i) => (
+                    <div
+                      key={i}
+                      className="p-3 sm:p-4 bg-neutral-50 dark:bg-neutral-700/50 border-2 border-neutral-200 dark:border-neutral-600 space-y-3"
                     >
-                      <Paperclip className="w-4 h-4" />
-                      Adicionar fotos ou vídeos
-                    </label>
-                  )}
-                  {provas.length > 0 && (
-                    <ul className="mt-3 space-y-1.5">
-                      {provas.map((arquivo, i) => (
-                        <li
-                          key={`${arquivo.name}-${i}`}
-                          className="flex items-center gap-2 px-2 py-1.5 text-sm bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 min-w-0"
-                        >
-                          <Paperclip className="w-4 h-4 shrink-0 text-neutral-500" />
-                          <span className="truncate flex-1 text-neutral-800 dark:text-neutral-100">{arquivo.name}</span>
-                          <span className="shrink-0 text-xs text-neutral-500 dark:text-neutral-400">{formatarTamanho(arquivo.size)}</span>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-bold text-neutral-700 dark:text-neutral-200">Pessoa {i + 1}</p>
+                        {pessoas.length > 1 && (
                           <button
                             type="button"
-                            onClick={() => setProvas((prev) => prev.filter((_, j) => j !== i))}
-                            className="shrink-0 p-0.5 text-neutral-500 hover:text-red-600"
-                            aria-label={`Remover ${arquivo.name}`}
+                            onClick={() => removerPessoa(i)}
+                            className="inline-flex items-center gap-1 text-xs font-semibold text-neutral-500 hover:text-red-600"
+                            aria-label={`Remover pessoa ${i + 1}`}
                           >
-                            <X className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Remover
                           </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                        )}
+                      </div>
+                      <Input
+                        label="Nome"
+                        name={`pessoa-${i}-nome`}
+                        placeholder={pessoa.naoSabeNome ? 'Nome não informado' : 'Nome da pessoa'}
+                        value={pessoa.naoSabeNome ? '' : pessoa.nome}
+                        disabled={pessoa.naoSabeNome}
+                        maxLength={120}
+                        onChange={(e) => atualizarPessoa(i, { nome: e.target.value })}
+                      />
+                      <label className="flex items-center gap-2 text-sm text-neutral-800 dark:text-neutral-100 cursor-pointer w-fit">
+                        <input
+                          type="checkbox"
+                          name={`pessoa-${i}-nao-sabe`}
+                          checked={pessoa.naoSabeNome}
+                          onChange={(e) => atualizarPessoa(i, { naoSabeNome: e.target.checked })}
+                        />
+                        Não sei o nome
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <Input
+                          label={pessoa.naoSabeNome ? 'Cargo' : 'Cargo (se souber)'}
+                          name={`pessoa-${i}-cargo`}
+                          placeholder="Ex.: supervisor, vendedor"
+                          value={pessoa.cargo}
+                          maxLength={120}
+                          onChange={(e) => atualizarPessoa(i, { cargo: e.target.value })}
+                        />
+                        <Input
+                          label={pessoa.naoSabeNome ? 'Setor' : 'Setor (se souber)'}
+                          name={`pessoa-${i}-setor`}
+                          placeholder="Ex.: financeiro, loja do centro"
+                          value={pessoa.setor}
+                          maxLength={120}
+                          onChange={(e) => atualizarPessoa(i, { setor: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
+                {pessoas.length < MAX_PESSOAS_DENUNCIADAS && (
+                  <button
+                    type="button"
+                    onClick={adicionarPessoa}
+                    className="mt-3 inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold border-2 border-neutral-900 dark:border-neutral-100 text-neutral-900 dark:text-neutral-100 bg-white dark:bg-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-600"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    Adicionar outra pessoa
+                  </button>
+                )}
+              </div>
 
-                <Select
-                  label="Essa situação ocorreu"
-                  options={frequenciaOptions}
-                  value={frequencia}
-                  onChange={(e) => setFrequencia(e.target.value)}
+              {/* Categorias */}
+              <div>
+                <p className="block text-sm font-bold text-neutral-900 dark:text-neutral-100 mb-1 uppercase tracking-wide">
+                  Categoria *
+                </p>
+                <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-3">
+                  Selecione uma ou mais categorias relacionadas à sua manifestação:
+                </p>
+                <div className="space-y-2">
+                  {categoriasOptions.map((t) => {
+                    const checked = temas.includes(t);
+                    return (
+                      <label
+                        key={t}
+                        className="flex items-start gap-3 p-3 bg-white dark:bg-neutral-700 border-2 border-neutral-200 dark:border-neutral-600 hover:border-neutral-300 dark:hover:border-neutral-400 transition-colors cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          className="mt-1"
+                          checked={checked}
+                          onChange={() => {
+                            setTemas((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
+                          }}
+                        />
+                        <span className="text-sm text-neutral-800 dark:text-neutral-100">{t === CATEGORIA_OUTRO ? 'Outro' : t}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                {outroSelecionado && (
+                  <div className="mt-3">
+                    <Input
+                      label="Qual outra categoria? *"
+                      name="tema-outro"
+                      placeholder="Descreva a categoria"
+                      value={temaOutro}
+                      maxLength={200}
+                      onChange={(e) => setTemaOutro(e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Local e data */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label="Local dos fatos *"
+                  name="local"
+                  placeholder="Ex.: loja do centro, sala de reuniões, grupo de WhatsApp"
+                  value={local}
+                  maxLength={200}
+                  onChange={(e) => setLocal(e.target.value)}
                 />
-
-                <Select
-                  label="Qual o impacto dessa situação?"
-                  options={impactoOptions}
-                  value={impacto}
-                  onChange={(e) => setImpacto(e.target.value)}
+                <Input
+                  label="Data ou período *"
+                  name="data-fatos"
+                  placeholder="Ex.: 10/11/2026, ou de agosto a outubro de 2026"
+                  value={dataFatos}
+                  maxLength={200}
+                  onChange={(e) => setDataFatos(e.target.value)}
                 />
+              </div>
 
-                <Select
-                  label="Alguém mais está envolvido ou vivencia a mesma situação?"
-                  options={envolvidosOptions}
-                  value={envolvidos}
-                  onChange={(e) => setEnvolvidos(e.target.value)}
+              {/* Descrição */}
+              <div>
+                <p className="block text-sm font-bold text-neutral-900 dark:text-neutral-100 mb-1 uppercase tracking-wide">
+                  Descrição dos fatos *
+                </p>
+                <ul className="text-sm text-neutral-600 dark:text-neutral-300 mb-3 list-disc pl-5 space-y-1">
+                  {ORIENTACAO_DESCRICAO.map((linha) => (
+                    <li key={linha}>{linha}</li>
+                  ))}
+                </ul>
+                <Textarea
+                  name="descricao"
+                  placeholder="Descreva o que aconteceu..."
+                  value={descricao}
+                  maxLength={20000}
+                  onChange={(e) => setDescricao(e.target.value)}
+                  rows={8}
                 />
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Mínimo de 10 caracteres.</p>
+              </div>
 
+              {/* Provas */}
+              <div>
+                <p className="block text-sm font-bold text-neutral-900 dark:text-neutral-100 mb-2 uppercase tracking-wide">
+                  Provas (opcional)
+                </p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3">
+                  Anexe fotos ou vídeos que ajudem a entender o ocorrido: até {MAX_PROVAS_POR_DENUNCIA} arquivos de até 30 MB
+                  cada. Fotos e vídeos podem guardar dados como o local e o modelo do celular; para manter o anonimato,
+                  prefira capturas de tela.
+                </p>
+                <input
+                  id="provas-input"
+                  type="file"
+                  multiple
+                  accept={ACCEPT_PROVAS}
+                  className="hidden"
+                  onChange={adicionarProvas}
+                />
+                {provas.length < MAX_PROVAS_POR_DENUNCIA && (
+                  <label
+                    htmlFor="provas-input"
+                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold border-2 border-neutral-900 dark:border-neutral-100 text-neutral-900 dark:text-neutral-100 bg-white dark:bg-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-600 cursor-pointer"
+                  >
+                    <Paperclip className="w-4 h-4" />
+                    Adicionar fotos ou vídeos
+                  </label>
+                )}
+                {provas.length > 0 && (
+                  <ul className="mt-3 space-y-1.5">
+                    {provas.map((arquivo, i) => (
+                      <li
+                        key={`${arquivo.name}-${i}`}
+                        className="flex items-center gap-2 px-2 py-1.5 text-sm bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 min-w-0"
+                      >
+                        <Paperclip className="w-4 h-4 shrink-0 text-neutral-500" />
+                        <span className="truncate flex-1 text-neutral-800 dark:text-neutral-100">{arquivo.name}</span>
+                        <span className="shrink-0 text-xs text-neutral-500 dark:text-neutral-400">{formatarTamanho(arquivo.size)}</span>
+                        <button
+                          type="button"
+                          onClick={() => setProvas((prev) => prev.filter((_, j) => j !== i))}
+                          className="shrink-0 p-0.5 text-neutral-500 hover:text-red-600"
+                          aria-label={`Remover ${arquivo.name}`}
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <Select
+                label="Com que frequência a situação ocorreu? *"
+                options={comSelecione(frequenciaOptions)}
+                value={frequencia}
+                onChange={(e) => setFrequencia(e.target.value)}
+              />
+
+              <Select
+                label="Qual o impacto dessa situação? *"
+                options={comSelecione(impactoOptions)}
+                value={impacto}
+                onChange={(e) => setImpacto(e.target.value)}
+              />
+
+              <div className="space-y-3">
                 <Select
-                  label="A situação já foi comunicada a alguém da empresa?"
-                  options={comunicadaOptions}
+                  label="Há testemunhas? *"
+                  name="testemunhas"
+                  options={comSelecione(simNaoNaoSeiOptions)}
+                  value={testemunhas}
+                  onChange={(e) => setTestemunhas(e.target.value)}
+                />
+                {temTestemunhas && (
+                  <Textarea
+                    label="Quem são ou como encontrá-las? *"
+                    name="testemunhas-detalhes"
+                    placeholder="Ex.: nomes, cargos ou setores das pessoas que presenciaram"
+                    value={testemunhasDetalhes}
+                    maxLength={2000}
+                    onChange={(e) => setTestemunhasDetalhes(e.target.value)}
+                    rows={3}
+                  />
+                )}
+              </div>
+
+              <Select
+                label="A conduta ainda está acontecendo? *"
+                name="conduta-continua"
+                options={comSelecione(simNaoNaoSeiOptions)}
+                value={condutaContinua}
+                onChange={(e) => setCondutaContinua(e.target.value)}
+              />
+
+              <div className="space-y-3">
+                <Select
+                  label="A situação já foi comunicada a alguém da empresa? *"
+                  name="comunicada"
+                  options={comSelecione(comunicadaOptions)}
                   value={comunicada}
                   onChange={(e) => setComunicada(e.target.value)}
                 />
-
-                <Select
-                  label="Deseja receber retorno sobre esta manifestação?"
-                  options={retornoOptions}
-                  value={desejaRetorno}
-                  onChange={(e) => setDesejaRetorno(e.target.value)}
-                />
-
-                <div className="p-4 bg-neutral-50 dark:bg-neutral-700 border-2 border-neutral-200 dark:border-neutral-600">
-                  <label className="flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="mt-1"
-                      checked={declaracao}
-                      onChange={(e) => setDeclaracao(e.target.checked)}
-                    />
-                    <span className="text-sm text-neutral-800 dark:text-neutral-100">
-                      Declaro que as informações prestadas são verdadeiras, de acordo com meu conhecimento, e estou ciente
-                      de que este canal deve ser utilizado de forma ética e responsável.
-                    </span>
-                  </label>
-                </div>
-
-                {/* Anonimato */}
-                <div className="p-4 bg-neutral-100 dark:bg-neutral-700 border-2 border-neutral-300 dark:border-neutral-500">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      {anonima ? (
-                        <EyeOff className="w-6 h-6 text-neutral-600 dark:text-neutral-300" />
-                      ) : (
-                        <Eye className="w-6 h-6 text-neutral-600 dark:text-neutral-300" />
-                      )}
-                      <div>
-                        <p className="font-bold text-neutral-900 dark:text-neutral-100">
-                          {anonima ? 'Denúncia Anônima' : 'Denúncia Identificada'}
-                        </p>
-                        <p className="text-sm text-neutral-600 dark:text-neutral-300">
-                          {anonima
-                            ? 'Sua identidade será protegida'
-                            : 'Seu nome será visível para o RH'}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setAnonima(!anonima)}
-                      className={`relative w-14 h-8 rounded-full transition-colors ${
-                        anonima ? 'bg-primary-500' : 'bg-neutral-300'
-                      } border-2 border-neutral-900`}
-                    >
-                      <span
-                        className={`absolute top-1 w-5 h-5 bg-white rounded-full border-2 border-neutral-900 transition-transform ${
-                          anonima ? 'right-1' : 'left-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Identificação (quando não anônima) */}
-                {!anonima && (
-                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 space-y-4">
-                    <p className="font-bold text-blue-900 dark:text-blue-300">Sua identificação</p>
-                    <Input
-                      label="Seu nome"
-                      placeholder="Digite seu nome completo"
-                      value={nomeIdentificado}
-                      onChange={(e) => setNomeIdentificado(e.target.value)}
-                    />
-                    <Input
-                      label="Seu setor"
-                      placeholder="Digite o setor em que você trabalha"
-                      value={setorIdentificado}
-                      onChange={(e) => setSetorIdentificado(e.target.value)}
-                    />
-                  </div>
+                {foiComunicada && (
+                  <Textarea
+                    label="Qual providência foi tomada? *"
+                    name="providencia"
+                    placeholder='Ex.: "nenhuma providência até agora" ou "a pessoa foi advertida, mas a situação continuou"'
+                    value={providenciaTomada}
+                    maxLength={2000}
+                    onChange={(e) => setProvidenciaTomada(e.target.value)}
+                    rows={3}
+                  />
                 )}
+              </div>
 
-                {/* Aviso de Confidencialidade */}
-                <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-300 dark:border-yellow-700">
-                  <div className="flex items-start gap-3">
-                    <Shield className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" />
+              <Select
+                label="Deseja receber retorno sobre esta manifestação? *"
+                options={comSelecione(retornoOptions)}
+                value={desejaRetorno}
+                onChange={(e) => setDesejaRetorno(e.target.value)}
+              />
+
+              {/* Anonimato */}
+              <div className="p-4 bg-neutral-100 dark:bg-neutral-700 border-2 border-neutral-300 dark:border-neutral-500">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    {anonima ? (
+                      <EyeOff className="w-6 h-6 shrink-0 text-neutral-600 dark:text-neutral-300" />
+                    ) : (
+                      <Eye className="w-6 h-6 shrink-0 text-neutral-600 dark:text-neutral-300" />
+                    )}
                     <div>
-                      <p className="font-bold text-yellow-800 dark:text-yellow-300">Confidencialidade Garantida</p>
-                      <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">
-                        Esta denúncia será tratada com total sigilo pelo departamento de RH.
-                        O gestor denunciado não será notificado. Apenas a equipe de RH terá
-                        acesso aos detalhes da manifestação.
+                      <p className="font-bold text-neutral-900 dark:text-neutral-100">
+                        {anonima ? 'Denúncia anônima' : 'Denúncia identificada'}
+                      </p>
+                      <p className="text-sm text-neutral-600 dark:text-neutral-300">
+                        {anonima
+                          ? 'Sua identidade não será registrada'
+                          : 'Seus dados serão vistos apenas pela equipe de RH responsável'}
                       </p>
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={anonima}
+                    aria-label="Denúncia anônima"
+                    onClick={() => setAnonima(!anonima)}
+                    className={`relative shrink-0 w-14 h-8 rounded-full transition-colors ${
+                      anonima ? 'bg-primary-500' : 'bg-neutral-300'
+                    } border-2 border-neutral-900`}
+                  >
+                    <span
+                      className={`absolute top-1 w-5 h-5 bg-white rounded-full border-2 border-neutral-900 transition-transform ${
+                        anonima ? 'right-1' : 'left-1'
+                      }`}
+                    />
+                  </button>
                 </div>
+              </div>
 
-                {/* Submit */}
-                <Button type="submit" variant="danger" loading={submitting} className="w-full">
-                  <Send className="w-5 h-5" />
-                  Enviar Denúncia
-                </Button>
-              </CardContent>
-            </form>
-          )}
+              {/* Identificação (quando não anônima) */}
+              {!anonima && (
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 space-y-4">
+                  <p className="font-bold text-blue-900 dark:text-blue-300">Sua identificação</p>
+                  <Input
+                    label="Seu nome"
+                    name="nome-identificado"
+                    placeholder="Digite seu nome completo"
+                    value={nomeIdentificado}
+                    maxLength={120}
+                    onChange={(e) => setNomeIdentificado(e.target.value)}
+                  />
+                  <Input
+                    label="Seu setor"
+                    name="setor-identificado"
+                    placeholder="Digite o setor em que você trabalha"
+                    value={setorIdentificado}
+                    maxLength={120}
+                    onChange={(e) => setSetorIdentificado(e.target.value)}
+                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Input
+                      label="E-mail (opcional)"
+                      name="email-identificado"
+                      type="email"
+                      placeholder="seu@email.com"
+                      value={emailIdentificado}
+                      maxLength={200}
+                      onChange={(e) => setEmailIdentificado(e.target.value)}
+                    />
+                    <Input
+                      label="Telefone (opcional)"
+                      name="telefone-identificado"
+                      type="tel"
+                      placeholder="(00) 00000-0000"
+                      value={telefoneIdentificado}
+                      maxLength={30}
+                      onChange={(e) => setTelefoneIdentificado(e.target.value)}
+                    />
+                  </div>
+                  <p className="text-xs text-blue-800 dark:text-blue-300">
+                    O e-mail e o telefone servem apenas para o RH entrar em contato com você sobre esta denúncia.
+                  </p>
+                </div>
+              )}
+
+              {/* Termo de ciência */}
+              <div className="p-4 bg-neutral-50 dark:bg-neutral-700 border-2 border-neutral-200 dark:border-neutral-600">
+                <p className="font-bold text-neutral-900 dark:text-neutral-100 mb-3">Termo de ciência *</p>
+                <div className="space-y-2 mb-4">
+                  {TERMO_CIENCIA.map((item) => (
+                    <p key={item.titulo} className="text-sm text-neutral-700 dark:text-neutral-200">
+                      <strong>{item.titulo}:</strong> {item.texto}
+                    </p>
+                  ))}
+                </div>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="declaracao"
+                    className="mt-1"
+                    checked={declaracao}
+                    onChange={(e) => setDeclaracao(e.target.checked)}
+                  />
+                  <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                    Li e concordo com o termo de ciência.
+                  </span>
+                </label>
+              </div>
+
+              {/* Aviso de Confidencialidade */}
+              <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-300 dark:border-yellow-700">
+                <div className="flex items-start gap-3">
+                  <Shield className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold text-yellow-800 dark:text-yellow-300">Confidencialidade garantida</p>
+                    <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">
+                      As pessoas citadas não são avisadas desta denúncia. Apenas a equipe de RH responsável pela apuração
+                      tem acesso aos detalhes da manifestação.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Submit */}
+              <Button type="submit" variant="danger" loading={submitting} className="w-full">
+                <Send className="w-5 h-5" />
+                Enviar Denúncia
+              </Button>
+            </CardContent>
+          </form>
         </Card>
       </div>
     </PublicLayout>

@@ -17,12 +17,13 @@ import { Badge } from '@/components/ui/Badge';
 import { SimpleRating } from '@/components/ui/Rating';
 import { Loading } from '@/components/ui/Loading';
 import { dashboardAPI } from '@/lib/api';
+import { nomeDosDenunciados, rotulos } from '@/lib/denuncia';
 import { useAuthStore } from '@/store/auth';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
-const COLORS = ['#98d4a0', '#d4b896', '#f87171', '#60a5fa'];
+const COLORS = ['#98d4a0', '#d4b896', '#f87171', '#60a5fa', '#c084fc', '#fbbf24'];
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -86,7 +87,7 @@ export default function AdminDashboardPage() {
 
   const denunciasPorTipoData = data?.denunciasPorTipo
     ? Object.entries(data.denunciasPorTipo).map(([tipo, count]) => ({
-        name: tipo.replace(/_/g, ' '),
+        name: rotulos.tipoDenuncia(tipo),
         value: count,
       }))
     : [];
@@ -235,12 +236,12 @@ export default function AdminDashboardPage() {
                 <CardContent>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                     {data.gestoresDenunciados.map((item: any) => {
-                      const nome = item.gestor?.user?.nome || item.colaboradorNome || 'Desconhecido';
-                      const subtitulo = item.gestor ? item.gestor.cargo : item.colaboradorSlackId ? 'Colaborador' : 'Gestor removido';
+                      const nome = item.nome || 'Desconhecido';
+                      const subtitulo = item.detalhe || '';
                       return (
-                        <div key={item.gestorId || item.colaboradorSlackId}className="p-3 sm:p-4 bg-white dark:bg-neutral-700 border-2 border-neutral-900 dark:border-neutral-500">
+                        <div key={item.chave} className="p-3 sm:p-4 bg-white dark:bg-neutral-700 border-2 border-neutral-900 dark:border-neutral-500">
                           <div className="flex items-center gap-2 sm:gap-3">
-                            <Avatar src={item.gestor?.foto} alt={nome} size="sm" />
+                            <Avatar src={item.foto} alt={nome} size="sm" />
                             <div className="flex-1 min-w-0">
                               <p className="font-bold text-sm dark:text-neutral-100 truncate">{nome}</p>
                               <p className="text-xs text-neutral-600 dark:text-neutral-300 truncate">{subtitulo}</p>
@@ -289,8 +290,8 @@ export default function AdminDashboardPage() {
                     {data?.denunciasRecentes?.map((denuncia: any) => (
                       <div key={denuncia.id} className="p-2.5 sm:p-3 border-2 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
                         <div className="flex items-center justify-between gap-2 mb-1">
-                          <p className="font-semibold text-xs sm:text-sm dark:text-neutral-100 truncate">{denuncia.gestor?.user?.nome || denuncia.colaboradorNome || 'Desconhecido'}</p>
-                          <Badge variant="danger" className="shrink-0 text-xs">{denuncia.tipo.replace(/_/g, ' ')}</Badge>
+                          <p className="font-semibold text-xs sm:text-sm dark:text-neutral-100 truncate">{nomeDosDenunciados(denuncia)}</p>
+                          <Badge variant="danger" className="shrink-0 text-xs">{rotulos.tipoDenuncia(denuncia.tipo)}</Badge>
                         </div>
                         <p className="text-xs text-neutral-600 dark:text-neutral-300 line-clamp-2">{denuncia.descricao}</p>
                         <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">

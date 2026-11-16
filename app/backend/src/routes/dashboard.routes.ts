@@ -3,6 +3,7 @@ import { authenticateToken, AuthRequest, requireAdmin } from '../middleware/auth
 import { Role, StatusDenuncia } from '../models';
 import { col, docRef, getManyByIds, normalizeFirestoreData, snapData } from '../firestoreRepo';
 import { semDenunciasContraOUsuario } from '../services/conflitoInteresse';
+import { palavrasDoNome, resumoDosDenunciados } from '../services/nomes';
 import ExcelJS from 'exceljs';
 
 const router = Router();
@@ -249,25 +250,51 @@ router.get('/admin', authenticateToken, requireAdmin, async (req: AuthRequest, r
         .map((d: any) => ({ id: d.id, ...(normalizeFirestoreData(d.data()) as any) }))
         .filter((d: any) => !fromDate || (d.createdAt instanceof Date && d.createdAt >= fromDate))
     );
-    // Agrupar por pessoa denunciada: gestor (gestorId) ou colaborador (colaboradorSlackId)
-    type Denunciado = { gestorId: string | null; colaboradorSlackId: string | null; colaboradorNome: string | null; total: number };
-    const denunciadosByKey = denunciasAll.reduce<Record<string, Denunciado>>((acc: Record<string, Denunciado>, d: any) => {
-      const key = d.gestorId ? `g:${d.gestorId}` : d.colaboradorSlackId ? `c:${d.colaboradorSlackId}` : null;
-      if (!key) return acc;
-      if (!acc[key]) {
-        acc[key] = {
-          gestorId: d.gestorId || null,
-          colaboradorSlackId: d.gestorId ? null : d.colaboradorSlackId,
-          colaboradorNome: d.gestorId ? null : (d.colaboradorNome || null),
-          total: 0
-        };
+    // Agrupar por pessoa denunciada. Denúncias antigas apontam um gestor (gestorId) ou um
+    // colaborador (colaboradorSlackId); as novas têm nomes digitados, agrupados pelo nome
+    // (sem diferenciar acentos e maiúsculas). Pessoas sem nome informado não entram.
+    type Denunciado = {
+      chave: string;
+      gestorId: string | null;
+      colaboradorSlackId: string | null;
+      nome: string | null;
+      detalhe: string | null;
+      total: number;
+    };
+    const denunciadosByKey: Record<string, Denunciado> = {};
+    const contarDenunciado = (chave: string, dados: Omit<Denunciado, 'chave' | 'total'>) => {
+      if (!denunciadosByKey[chave]) denunciadosByKey[chave] = { chave, ...dados, total: 0 };
+      denunciadosByKey[chave].total += 1;
+    };
+    for (const d of denunciasAll as any[]) {
+      if (Array.isArray(d.denunciados)) {
+        const chavesDestaDenuncia = new Set<string>();
+        for (const p of d.denunciados) {
+          const palavras = p && !p.naoSabeNome ? palavrasDoNome(p.nome) : [];
+          const chave = palavras.length ? `n:${palavras.join(' ')}` : null;
+          if (!chave || chavesDestaDenuncia.has(chave)) continue;
+          chavesDestaDenuncia.add(chave);
+          contarDenunciado(chave, {
+            gestorId: null,
+            colaboradorSlackId: null,
+            nome: p.nome,
+            detalhe: [p.cargo, p.setor].filter(Boolean).join(' · ') || null
+          });
+        }
+      } else if (d.gestorId) {
+        contarDenunciado(`g:${d.gestorId}`, { gestorId: d.gestorId, colaboradorSlackId: null, nome: null, detalhe: null });
+      } else if (d.colaboradorSlackId) {
+        contarDenunciado(`c:${d.colaboradorSlackId}`, {
+          gestorId: null,
+          colaboradorSlackId: d.colaboradorSlackId,
+          nome: d.colaboradorNome || null,
+          detalhe: 'Colaborador'
+        });
       }
-      acc[key].total += 1;
-      return acc;
-    }, {});
+    }
     const topDenunciados = Object.values(denunciadosByKey)
       .sort((a, b) => b.total - a.total)
-      .slice(0, 5);
+      .slice(0, 6);
 
     // Denúncias recentes (reusar denunciasAllSnap, evita query extra)
     const denunciasRecentesRaw = [...denunciasAll]
@@ -316,10 +343,10 @@ router.get('/admin', authenticateToken, requireAdmin, async (req: AuthRequest, r
       const gestor = item.gestorId ? denunciadosGestoresById[item.gestorId] : undefined;
       const gestorUser = gestor ? denunciadosUsersById[(gestor as any).userId] : undefined;
       return {
-        gestor: gestor ? { ...(gestor as any), user: gestorUser ? { nome: (gestorUser as any).nome } : null } : null,
-        gestorId: item.gestorId,
-        colaboradorSlackId: item.colaboradorSlackId,
-        colaboradorNome: item.colaboradorNome,
+        chave: item.chave,
+        nome: item.gestorId ? (gestorUser as any)?.nome || null : item.nome,
+        detalhe: item.gestorId ? (gestor ? (gestor as any).cargo || 'Gestor' : 'Gestor removido') : item.detalhe,
+        foto: (gestor as any)?.foto || null,
         totalDenuncias: item.total
       };
     });
@@ -417,23 +444,38 @@ router.get('/export', authenticateToken, requireAdmin, async (req: AuthRequest, 
           data = denuncias.map((d: any) => {
             const gestor = gestoresById[d.gestorId];
             const gestorUser = gestor ? usersById[(gestor as any).userId] : undefined;
+            const formatoNovo = Array.isArray(d.denunciados);
             return {
-              denunciadoNome: (gestorUser as any)?.nome || d.colaboradorNome || '',
-              denunciadoTipo: d.gestorId ? 'Gestor' : d.colaboradorSlackId ? 'Colaborador' : '',
+              protocolo: d.codigoProtocolo ?? '',
+              criadaEm: d.createdAt ?? '',
+              denunciadoNome: formatoNovo
+                ? resumoDosDenunciados(d.denunciados)
+                : (gestorUser as any)?.nome || d.colaboradorNome || '',
+              denunciadoTipo: formatoNovo ? '' : d.gestorId ? 'Gestor' : d.colaboradorSlackId ? 'Colaborador' : '',
               tipo: d.tipo ?? '',
               tipoManifestacao: d.tipoManifestacao ?? '',
               temas: Array.isArray(d.temas) ? d.temas.join(' | ') : '',
+              temaOutro: d.temaOutro ?? '',
+              local: d.local ?? '',
+              dataFatos: d.dataFatos ?? '',
               descricao: d.descricao ?? '',
               descricaoComplementar: d.descricaoComplementar ?? '',
               frequencia: d.frequencia ?? '',
               impacto: d.impacto ?? '',
               envolvidos: d.envolvidos ?? '',
+              testemunhas: d.testemunhas ?? '',
+              testemunhasDetalhes: d.testemunhasDetalhes ?? '',
+              condutaContinua: d.condutaContinua ?? '',
               comunicada: d.comunicada ?? '',
+              providenciaTomada: d.providenciaTomada ?? '',
               desejaRetorno: d.desejaRetorno ?? '',
               declaracao: d.declaracao ?? null,
               anonima: d.anonima ?? null,
               nomeIdentificado: d.anonima ? '' : (d.nomeIdentificado ?? ''),
               setorIdentificado: d.anonima ? '' : (d.setorIdentificado ?? ''),
+              emailIdentificado: d.anonima ? '' : (d.emailIdentificado ?? ''),
+              telefoneIdentificado: d.anonima ? '' : (d.telefoneIdentificado ?? ''),
+              provas: Number(d.anexosCount || 0),
               status: d.status ?? ''
             };
           });
