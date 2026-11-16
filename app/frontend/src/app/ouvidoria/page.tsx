@@ -10,7 +10,8 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { Button } from '@/components/ui/Button';
-import { denunciasAPI, provasDenunciaAPI } from '@/lib/api';
+import { colaboradoresAPI, denunciasAPI, gestoresAPI, provasDenunciaAPI } from '@/lib/api';
+import { CampoNomePessoa, normalizarBusca, type SugestaoPessoa } from '@/components/denuncia/CampoNomePessoa';
 import {
   ACCEPT_PROVAS,
   MAX_BYTES_POR_PROVA,
@@ -99,6 +100,36 @@ export default function OuvidoriaPage() {
     window.addEventListener('beforeunload', aviso);
     return () => window.removeEventListener('beforeunload', aviso);
   }, [enviandoProvas]);
+
+  // Sugestões para o campo "Nome": gestores e colaboradores cadastrados. Se a lista não
+  // carregar, o formulário funciona normalmente, só sem sugestões.
+  const [sugestoesPessoas, setSugestoesPessoas] = useState<SugestaoPessoa[]>([]);
+  useEffect(() => {
+    let ativo = true;
+    Promise.allSettled([gestoresAPI.list(), colaboradoresAPI.list()]).then(([gestoresRes, colaboradoresRes]) => {
+      if (!ativo) return;
+      const porNome = new Map<string, SugestaoPessoa>();
+      const incluir = (s: SugestaoPessoa) => {
+        const chave = normalizarBusca(s.nome);
+        if (chave && !porNome.has(chave)) porNome.set(chave, s);
+      };
+      // Gestores primeiro: têm cargo e departamento
+      if (gestoresRes.status === 'fulfilled' && Array.isArray(gestoresRes.value.data)) {
+        for (const g of gestoresRes.value.data) {
+          if (g?.user?.nome) incluir({ nome: g.user.nome, tipo: 'Gestor', cargo: g.cargo || null, setor: g.departamento || null });
+        }
+      }
+      if (colaboradoresRes.status === 'fulfilled' && Array.isArray(colaboradoresRes.value.data)) {
+        for (const c of colaboradoresRes.value.data) {
+          if (c?.nome) incluir({ nome: c.nome, tipo: 'Colaborador' });
+        }
+      }
+      setSugestoesPessoas(Array.from(porNome.values()));
+    });
+    return () => {
+      ativo = false;
+    };
+  }, []);
 
   const atualizarPessoa = (indice: number, dados: Partial<Pessoa>) => {
     setPessoas((prev) => prev.map((p, i) => (i === indice ? { ...p, ...dados } : p)));
@@ -482,14 +513,21 @@ export default function OuvidoriaPage() {
                           </button>
                         )}
                       </div>
-                      <Input
-                        label="Nome"
+                      <CampoNomePessoa
                         name={`pessoa-${i}-nome`}
                         placeholder={pessoa.naoSabeNome ? 'Nome não informado' : 'Nome da pessoa'}
                         value={pessoa.naoSabeNome ? '' : pessoa.nome}
                         disabled={pessoa.naoSabeNome}
-                        maxLength={120}
-                        onChange={(e) => atualizarPessoa(i, { nome: e.target.value })}
+                        pessoas={sugestoesPessoas}
+                        onChange={(nome) => atualizarPessoa(i, { nome })}
+                        onEscolher={(sugestao) =>
+                          atualizarPessoa(i, {
+                            nome: sugestao.nome,
+                            // Completa cargo e setor só se ainda estiverem vazios
+                            cargo: pessoa.cargo || sugestao.cargo || '',
+                            setor: pessoa.setor || sugestao.setor || '',
+                          })
+                        }
                       />
                       <label className="flex items-center gap-2 text-sm text-neutral-800 dark:text-neutral-100 cursor-pointer w-fit">
                         <input
