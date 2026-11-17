@@ -41,8 +41,9 @@ const simNaoNaoSeiSchema = z.enum(['SIM', 'NAO', 'NAO_SEI']);
 const MAX_PESSOAS_DENUNCIADAS = 10;
 const TEMA_OUTROS = 'Outros';
 // Versão do termo de ciência aceito no formulário (o texto fica no frontend, em lib/denuncia.ts).
-// A versão 1 é o termo curto do formulário anterior.
-const VERSAO_TERMO_CIENCIA = 2;
+// Versão 1: termo curto do formulário anterior. Versão 2: rascunho com títulos (17/11/2026).
+// Versão 3: texto do modelo do RH (Comitê de Ética/Compliance).
+const VERSAO_TERMO_CIENCIA = 3;
 
 const textoLivre = (max: number, mensagem: string) => z.string().trim().max(max, mensagem).optional().default('');
 

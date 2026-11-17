@@ -866,9 +866,9 @@ export default function OuvidoriaPage() {
               <div className="p-4 bg-neutral-50 dark:bg-neutral-700 border-2 border-neutral-200 dark:border-neutral-600">
                 <p className="font-bold text-neutral-900 dark:text-neutral-100 mb-3">Termo de ciência *</p>
                 <div className="space-y-2 mb-4">
-                  {TERMO_CIENCIA.map((item) => (
-                    <p key={item.titulo} className="text-sm text-neutral-700 dark:text-neutral-200">
-                      <strong>{item.titulo}:</strong> {item.texto}
+                  {TERMO_CIENCIA.map((paragrafo) => (
+                    <p key={paragrafo} className="text-sm text-neutral-700 dark:text-neutral-200">
+                      {paragrafo}
                     </p>
                   ))}
                 </div>

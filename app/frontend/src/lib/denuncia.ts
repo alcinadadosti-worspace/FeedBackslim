@@ -121,27 +121,10 @@ export const ORIENTACAO_DESCRICAO = [
   'Para sugestões, elogios ou dúvidas, descreva o assunto com clareza.',
 ];
 
-// Termo de ciência do formulário. Ao mudar o texto, aumente VERSAO_TERMO_CIENCIA no backend
-// (denuncia.routes.ts) para saber qual versão cada denunciante aceitou.
-export const TERMO_CIENCIA: { titulo: string; texto: string }[] = [
-  {
-    titulo: 'Veracidade',
-    texto:
-      'Declaro que as informações prestadas são verdadeiras, de acordo com o meu conhecimento, e que relato os fatos de boa-fé.',
-  },
-  {
-    titulo: 'Má-fé',
-    texto:
-      'Estou ciente de que fazer uma denúncia sabendo que ela é falsa, ou com o objetivo de prejudicar alguém, é uma falta grave e pode levar a medidas disciplinares e legais.',
-  },
-  {
-    titulo: 'Sigilo',
-    texto:
-      'A denúncia é tratada com sigilo. Se eu me identificar, meus dados serão vistos apenas pela equipe responsável pela apuração e não serão informados às pessoas citadas. Retaliação contra quem denuncia de boa-fé não é tolerada.',
-  },
-  {
-    titulo: 'Quem investiga',
-    texto:
-      'A apuração é conduzida pela equipe de RH responsável pela Ouvidoria, com imparcialidade. Pessoas citadas na denúncia não participam da análise do caso.',
-  },
+// Termo de ciência do formulário, no texto do modelo do RH (um item por parágrafo).
+// Ao mudar o texto, aumente VERSAO_TERMO_CIENCIA no backend (denuncia.routes.ts)
+// para saber qual versão cada denunciante aceitou.
+export const TERMO_CIENCIA: string[] = [
+  'Declaro que as informações prestadas são verdadeiras e que tenho ciência de que denúncias comprovadamente falsas e de má-fé podem ensejar responsabilização nos termos da legislação vigente e das normas internas da empresa.',
+  'Declaro ainda que estou ciente de que esta denúncia será tratada com sigilo e apurada pelo Comitê de Ética/Compliance da empresa, quando preenchidos os requisitos para sua investigação.',
 ];
